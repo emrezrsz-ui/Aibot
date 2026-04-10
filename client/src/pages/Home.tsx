@@ -58,18 +58,13 @@ export default function Home() {
 
       {/* Content */}
       <div className="relative z-10">
-        {/* Disclaimer - Always visible at top */}
-        <div className="bg-red-900/30 border-b border-red-500/50 px-4 py-3 md:px-6 md:py-4">
-          <div className="max-w-7xl mx-auto flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <p className="text-red-400 font-bold text-sm md:text-base">
-                ⚠️ ZU EXPERIMENTELLEN ZWECKEN - KEINE ANLAGEBERATUNG
-              </p>
-              <p className="text-red-300 text-xs md:text-sm mt-1">
-                Dieses Dashboard dient nur zu Bildungszwecken. Die angezeigten Signale sind keine Anlageberatung.
-              </p>
-            </div>
+        {/* Disclaimer - Compact version */}
+        <div className="bg-red-900/20 border-b border-red-500/30 px-4 py-2 md:px-6">
+          <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs md:text-sm">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <p className="text-red-400 font-mono">
+              ⚠️ Nur zu Bildungszwecken - Keine Anlageberatung
+            </p>
           </div>
         </div>
 
