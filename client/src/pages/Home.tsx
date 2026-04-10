@@ -1,25 +1,204 @@
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
-
 /**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Best Practices, Design Guide and Common Pitfalls
+ * Crypto Signal Dashboard - Home Page
+ * Hauptseite mit Trading-Signalen und Live-Marktdaten
+ * Design Philosophy: Futuristisches Neon-Trading-Terminal
  */
+
+import { useState, useMemo } from "react";
+import { useTradeSignals } from "@/hooks/useTradeSignals";
+import { SignalBadge } from "@/components/SignalBadge";
+import { MarketDataCard } from "@/components/MarketDataCard";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, RefreshCw, Clock } from "lucide-react";
+
+const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
+const INTERVALS = [
+  { label: "1m", value: "1m" },
+  { label: "5m", value: "5m" },
+  { label: "15m", value: "15m" },
+  { label: "1h", value: "1h" },
+  { label: "4h", value: "4h" },
+];
+
 export default function Home() {
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+  const [selectedInterval, setSelectedInterval] = useState("15m");
+  const { signals, loading, error, lastUpdate, refetch } = useTradeSignals({
+    symbols: SYMBOLS,
+    interval: selectedInterval,
+    refreshInterval: 10000,
+  });
+
+  const formattedTime = useMemo(() => {
+    return new Date(lastUpdate).toLocaleTimeString("de-DE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  }, [lastUpdate]);
+
+  const buySignals = signals.filter((s) => s.signal === "BUY");
+  const sellSignals = signals.filter((s) => s.signal === "SELL");
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white font-mono">
+      {/* Animated background grid */}
+      <div className="fixed inset-0 opacity-5 pointer-events-none">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `
+              linear-gradient(0deg, transparent 24%, rgba(0, 217, 255, 0.1) 25%, rgba(0, 217, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 217, 255, 0.1) 75%, rgba(0, 217, 255, 0.1) 76%, transparent 77%, transparent),
+              linear-gradient(90deg, transparent 24%, rgba(0, 217, 255, 0.1) 25%, rgba(0, 217, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 217, 255, 0.1) 75%, rgba(0, 217, 255, 0.1) 76%, transparent 77%, transparent)
+            `,
+            backgroundSize: "50px 50px",
+          }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="border-b border-cyan-400/20 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            {/* Disclaimer */}
+            <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-red-400 font-bold text-lg">
+                  ⚠️ ZU EXPERIMENTELLEN ZWECKEN - KEINE ANLAGEBERATUNG
+                </p>
+                <p className="text-red-300 text-sm mt-1">
+                  Dieses Dashboard dient nur zu Bildungszwecken. Die angezeigten
+                  Signale sind keine Anlageberatung. Treffen Sie
+                  Investitionsentscheidungen auf eigene Verantwortung.
+                </p>
+              </div>
+            </div>
+
+            {/* Title and Controls */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-magenta-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+                  ◆ CRYPTO SIGNAL DASHBOARD ◆
+                </h1>
+                <p className="text-gray-400 text-sm">
+                  Live Trading-Signale basierend auf RSI & EMA-Strategie
+                </p>
+              </div>
+              <Button
+                onClick={refetch}
+                disabled={loading}
+                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                Aktualisieren
+              </Button>
+            </div>
+
+            {/* Time and Interval Selection */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <Clock className="w-4 h-4" />
+                <span>Letzte Aktualisierung: {formattedTime}</span>
+              </div>
+              <div className="flex gap-2">
+                {INTERVALS.map((interval) => (
+                  <Button
+                    key={interval.value}
+                    onClick={() => setSelectedInterval(interval.value)}
+                    className={`font-mono text-xs px-3 py-1 h-auto ${
+                      selectedInterval === interval.value
+                        ? "bg-cyan-500 text-black hover:bg-cyan-600"
+                        : "bg-gray-800 text-cyan-400 hover:bg-gray-700 border border-cyan-400/30"
+                    }`}
+                  >
+                    {interval.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          {/* Signal Summary */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="p-4 bg-green-900/30 border border-green-400/50 rounded-lg">
+              <p className="text-green-400 text-sm font-bold mb-1">KAUF-SIGNALE</p>
+              <p className="text-3xl font-bold text-green-400">{buySignals.length}</p>
+            </div>
+            <div className="p-4 bg-red-900/30 border border-red-500/50 rounded-lg">
+              <p className="text-red-400 text-sm font-bold mb-1">VERKAUF-SIGNALE</p>
+              <p className="text-3xl font-bold text-red-500">{sellSignals.length}</p>
+            </div>
+            <div className="p-4 bg-gray-800/30 border border-gray-500/30 rounded-lg">
+              <p className="text-gray-400 text-sm font-bold mb-1">GESAMT-SIGNALE</p>
+              <p className="text-3xl font-bold text-cyan-400">{signals.length}</p>
+            </div>
+          </div>
+
+          {/* Error State */}
+          {error && (
+            <div className="mb-8 p-4 bg-red-900/30 border border-red-500/50 rounded-lg">
+              <p className="text-red-400 font-mono text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && signals.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="inline-block">
+                  <div className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                </div>
+                <p className="text-cyan-400 mt-4 font-mono">
+                  Daten werden geladen...
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Signals Grid */}
+          {signals.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold text-cyan-400 mb-4 border-b border-cyan-400/20 pb-3">
+                ▸ TRADING-SIGNALE
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {signals.map((signal) => (
+                  <SignalBadge key={signal.symbol} signal={signal} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Market Data Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-cyan-400 mb-4 border-b border-cyan-400/20 pb-3">
+              ▸ LIVE-MARKTDATEN
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {SYMBOLS.map((symbol) => (
+                <MarketDataCard key={symbol} symbol={symbol} />
+              ))}
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="border-t border-cyan-400/20 bg-gray-900/50 mt-12">
+          <div className="max-w-7xl mx-auto px-6 py-6 text-center text-gray-500 text-xs font-mono">
+            <p>
+              Datenquelle: Binance API | RSI (14) & EMA (12/26) Strategie |
+              Aktualisierung: Alle 10 Sekunden
+            </p>
+            <p className="mt-2">
+              © 2026 Crypto Signal Dashboard | Nur zu Bildungszwecken
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
