@@ -1,14 +1,14 @@
 /**
  * useNotifications Hook
  * Verwaltet Web-Push Benachrichtigungen, Service Worker und Sound-Alerts
- * Unterstützt iOS PWA (Safari auf Home-Bildschirm)
+ * Unterstützt iOS PWA (Safari auf Home-Bildschirm ab iOS 16.4)
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export type NotificationPermission = "default" | "granted" | "denied";
 
-interface SignalNotification {
+export interface SignalNotification {
   symbol: string;
   signal: "BUY" | "SELL";
   timeframe: string;
@@ -16,40 +16,54 @@ interface SignalNotification {
   price: number;
 }
 
-// Generiere einen kurzen Chime-Sound via Web Audio API
-function playChimeSound() {
+/**
+ * Dezenter Soft-Chime Sound via Web Audio API
+ * Klingt wie ein sanftes "Ding" — nicht aufdringlich, angenehm im Hintergrund
+ * Töne: E5 (659 Hz) → G#5 (830 Hz), Lautstärke: 0.18 (sehr dezent)
+ */
+function playSoftChime() {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
 
-    const ctx = new AudioContext();
+    const ctx = new AudioCtx();
 
-    // Chime: zwei aufeinanderfolgende Töne
-    const frequencies = [880, 1100]; // A5 und C#6
-    let time = ctx.currentTime;
+    // Zwei sanfte Töne mit weichem Timbre (Tiefpassfilter)
+    const notes = [
+      { freq: 659, delay: 0.0,  vol: 0.18 }, // E5 — erster Ton
+      { freq: 830, delay: 0.13, vol: 0.13 }, // G#5 — zweiter Ton (leiser)
+    ];
 
-    frequencies.forEach((freq, i) => {
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+    notes.forEach(({ freq, delay, vol }) => {
+      const osc    = ctx.createOscillator();
+      const gain   = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      // Tiefpassfilter: entfernt harte Obertöne → weiches Glocken-Timbre
+      filter.type = "lowpass";
+      filter.frequency.value = 2000;
+      filter.Q.value = 0.7;
 
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(freq, time + i * 0.15);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
 
-      gainNode.gain.setValueAtTime(0, time + i * 0.15);
-      gainNode.gain.linearRampToValueAtTime(0.4, time + i * 0.15 + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, time + i * 0.15 + 0.4);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
 
-      oscillator.start(time + i * 0.15);
-      oscillator.stop(time + i * 0.15 + 0.4);
+      // Sanfter Attack (20ms) + langer Decay (700ms) → "Ding"-Charakter
+      const t = ctx.currentTime + delay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(vol, t + 0.02);         // Attack
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.70); // Decay
+
+      osc.start(t);
+      osc.stop(t + 0.70);
     });
 
-    // Kontext nach 2 Sekunden schließen
-    setTimeout(() => ctx.close(), 2000);
+    setTimeout(() => { try { ctx.close(); } catch (_) { /* ignore */ } }, 2000);
   } catch (err) {
-    console.warn("[Notifications] Sound konnte nicht abgespielt werden:", err);
+    console.debug("[Sound] Soft-Chime nicht verfügbar:", err);
   }
 }
 
@@ -103,8 +117,8 @@ export function useNotifications() {
     (notification: SignalNotification) => {
       const { symbol, signal, timeframe, strength, price } = notification;
 
-      // Erstelle eindeutigen Key um Duplikate zu verhindern
-      const notifKey = `${symbol}-${signal}-${timeframe}-${Math.floor(Date.now() / 60000)}`;
+      // Eindeutiger Key — max 1 Alert pro Signal alle 2 Minuten
+      const notifKey = `${symbol}-${signal}-${timeframe}-${Math.floor(Date.now() / 120000)}`;
       if (notifiedSignals.current.has(notifKey)) return;
       notifiedSignals.current.add(notifKey);
 
@@ -115,11 +129,12 @@ export function useNotifications() {
       }
 
       const emoji = signal === "BUY" ? "🟢" : "🔴";
-      const title = `🚨 Starkes Signal: ${symbol.replace("USDT", "/USDT")}`;
-      const body = `${emoji} ${signal} auf dem ${timeframe} Chart mit ${strength}% Stärke. Preis: $${price.toFixed(2)}`;
+      const displaySymbol = symbol.replace("USDT", "/USDT");
+      const title = `⚡ Starkes Signal: ${displaySymbol}`;
+      const body = `${emoji} ${signal} auf dem ${timeframe} Chart mit ${strength}% Stärke. Preis: $${price.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-      // Sound abspielen
-      playChimeSound();
+      // Dezenter Soft-Chime abspielen
+      playSoftChime();
 
       // Benachrichtigung senden
       if (permission === "granted") {
@@ -129,15 +144,15 @@ export function useNotifications() {
             type: "SHOW_NOTIFICATION",
             title,
             body,
-            icon: "/icon-192.png",
+            icon: "/app-icon-192x192.png",
           });
         } else {
           // Direkte Browser-Benachrichtigung (Fallback)
           try {
             new Notification(title, {
               body,
-              icon: "/icon-192.png",
-              badge: "/icon-192.png",
+              icon: "/app-icon-192x192.png",
+              badge: "/app-icon-192x192.png",
             });
           } catch (err) {
             console.warn("[Notifications] Direkte Benachrichtigung fehlgeschlagen:", err);
