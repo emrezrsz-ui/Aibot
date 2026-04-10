@@ -169,23 +169,17 @@ export function updateTradeHistory(history: Trade[], newTrade: Trade): Trade[] {
 
 /**
  * Initialisiere Trading State für alle Coins
+ * Keys müssen mit den SYMBOLS in Home.tsx übereinstimmen (BTCUSDT, ETHUSDT, etc.)
  */
 export function initializeTradingState(): CoinTradingState {
-  return {
-    "BTC/USDT": {
+  const symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
+  const state: CoinTradingState = {};
+  symbols.forEach((symbol) => {
+    state[symbol] = {
       activeTrade: null,
       history: [],
       winrate: 0,
-    },
-    "ETH/USDT": {
-      activeTrade: null,
-      history: [],
-      winrate: 0,
-    },
-    "SOL/USDT": {
-      activeTrade: null,
-      history: [],
-      winrate: 0,
-    },
-  };
+    };
+  });
+  return state;
 }

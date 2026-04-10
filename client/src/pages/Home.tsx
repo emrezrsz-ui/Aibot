@@ -4,7 +4,7 @@
  * Design Philosophy: Futuristisches Neon-Trading-Terminal
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useTradeSignals } from "@/hooks/useTradeSignals";
 import { useTradeMonitoring } from "@/hooks/useTradeMonitoring";
 import { SignalBadge } from "@/components/SignalBadge";
@@ -34,18 +34,30 @@ export default function Home() {
   // Trade Monitoring
   const { tradingState, generateSignal } = useTradeMonitoring(marketData);
 
-  // Auto-generate signals wenn neue Signale erkannt werden
+  // Ref für tradingState um Endlosschleifen zu vermeiden
+  const tradingStateRef = useRef(tradingState);
+  useEffect(() => {
+    tradingStateRef.current = tradingState;
+  }, [tradingState]);
+
+  // Stabiles generateSignal via useCallback
+  const stableGenerateSignal = useCallback(generateSignal, []);
+
+  // Auto-generate signals - NUR wenn sich signals oder selectedInterval ändert
+  // tradingState ist NICHT in den Dependencies (nutze Ref stattdessen)
   useEffect(() => {
     signals.forEach((signal) => {
       if (signal.signal !== "NEUTRAL") {
-        const coinState = tradingState[signal.symbol];
-        // Generiere Signal nur wenn kein aktiver Trade existiert
+        // Lese aktuellen State via Ref - kein Re-Trigger!
+        const coinState = tradingStateRef.current[signal.symbol];
+        // HARD-LOCK: Generiere Signal NUR wenn KEIN aktiver Trade existiert
         if (!coinState?.activeTrade || coinState.activeTrade.status !== "ACTIVE") {
-          generateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength, selectedInterval);
+          stableGenerateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength, selectedInterval);
         }
       }
     });
-  }, [signals, tradingState, generateSignal, selectedInterval]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signals, selectedInterval]); // tradingState BEWUSST NICHT hier - nutze Ref!
 
   const formattedTime = useMemo(() => {
     return new Date(lastUpdate).toLocaleTimeString("de-DE", {

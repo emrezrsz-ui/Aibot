@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CoinTradingState,
   Trade,
@@ -23,8 +23,10 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
   /**
    * Generiere ein neues Signal und erstelle einen Trade
    * HARD-LOCK: Wenn ein Trade ACTIVE ist, wird diese Funktion komplett ignoriert
+   * useCallback mit leerem Array = stabile Referenz, kein Re-Render-Trigger
    */
-  const generateSignal = (
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const generateSignal = useCallback((
     symbol: string,
     type: "BUY" | "SELL",
     strength: number,
@@ -51,7 +53,8 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
         },
       };
     });
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Starte Trade-Monitoring (sekundliche Überprüfung)
