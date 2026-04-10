@@ -10,6 +10,7 @@ import {
   calculateRSI,
   calculateEMA,
   generateSignal,
+  calculateStopLossAndTakeProfit,
   parseBinanceCandles,
   extractClosePrices,
   SignalData,
@@ -57,6 +58,12 @@ export function useTradeSignals({
           currentPrice
         );
 
+        // Berechne Stop Loss und Take Profit
+        const { stopLoss, takeProfit } = calculateStopLossAndTakeProfit(
+          signal,
+          currentPrice
+        );
+
         return {
           symbol,
           currentPrice,
@@ -65,6 +72,8 @@ export function useTradeSignals({
           ema26,
           signal,
           strength,
+          stopLoss,
+          takeProfit,
           timestamp: Date.now(),
         };
       });

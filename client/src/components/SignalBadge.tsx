@@ -1,10 +1,10 @@
 /**
  * Signal Badge Component
- * Zeigt Trading-Signale mit Neon-Styling an
+ * Zeigt Trading-Signale mit Neon-Styling, Währungsnamen und Risikomanagement an
  * Design Philosophy: Futuristisches Neon-Trading-Terminal
  */
 
-import { SignalData } from "@/lib/indicators";
+import { SignalData, getCurrencyInfo } from "@/lib/indicators";
 
 interface SignalBadgeProps {
   signal: SignalData;
@@ -35,10 +35,17 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
 
   const strengthBar = Math.round((signal.strength / 100) * 100);
 
+  // Hole Währungsinformationen
+  const currencyInfo = getCurrencyInfo(signal.symbol);
+
+  // Berechne Gewinn/Verlust Prozentsätze
+  const tpGain = ((signal.takeProfit - signal.currentPrice) / signal.currentPrice) * 100;
+  const slLoss = ((signal.currentPrice - signal.stopLoss) / signal.currentPrice) * 100;
+
   return (
     <div
       className={`
-        relative px-4 py-3 rounded-lg border
+        relative px-4 py-4 rounded-lg border
         ${bgColor} ${glowColor}
         transition-all duration-300 hover:shadow-xl
         overflow-hidden group
@@ -54,28 +61,62 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
       />
 
       {/* Content */}
-      <div className="relative z-10 space-y-2">
-        {/* Signal Label */}
-        <div className="flex items-center justify-between">
-          <span className={`font-mono font-bold text-lg ${textColor}`}>
-            {signal.signal}
-          </span>
-          <span className="text-xs text-gray-500 font-mono">
+      <div className="relative z-10 space-y-3">
+        {/* Header: Signal Type + Currency Name */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`font-mono font-bold text-lg ${textColor} flex-shrink-0`}>
+              {signal.signal}
+            </span>
+            <span
+              className="font-mono font-bold text-lg truncate"
+              style={{ color: currencyInfo.color }}
+            >
+              {currencyInfo.displayName}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500 font-mono flex-shrink-0">
             RSI: {signal.rsi.toFixed(1)}
           </span>
         </div>
 
-        {/* Price and EMAs */}
-        <div className="text-sm space-y-1">
-          <div className="flex justify-between text-gray-300">
+        {/* Current Price */}
+        <div className="text-sm">
+          <div className="flex justify-between items-center">
             <span className="text-gray-500">Preis:</span>
             <span className="font-mono font-semibold text-cyan-400">
               ${signal.currentPrice.toFixed(2)}
             </span>
           </div>
+        </div>
+
+        {/* Stop Loss & Take Profit */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="p-2 bg-gray-800/30 rounded border border-red-500/30">
+            <p className="text-red-400 font-bold mb-0.5">SL</p>
+            <p className="font-mono text-red-400 text-sm">
+              ${signal.stopLoss.toFixed(2)}
+            </p>
+            <p className="text-red-300 text-xs mt-0.5">
+              -{slLoss.toFixed(2)}%
+            </p>
+          </div>
+          <div className="p-2 bg-gray-800/30 rounded border border-green-500/30">
+            <p className="text-green-400 font-bold mb-0.5">TP</p>
+            <p className="font-mono text-green-400 text-sm">
+              ${signal.takeProfit.toFixed(2)}
+            </p>
+            <p className="text-green-300 text-xs mt-0.5">
+              +{tpGain.toFixed(2)}%
+            </p>
+          </div>
+        </div>
+
+        {/* EMAs */}
+        <div className="text-xs">
           <div className="flex justify-between text-gray-300">
             <span className="text-gray-500">EMA 12/26:</span>
-            <span className="font-mono text-sm">
+            <span className="font-mono">
               <span className="text-blue-400">
                 {signal.ema12.toFixed(2)}
               </span>
@@ -88,7 +129,7 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
         </div>
 
         {/* Strength Bar */}
-        <div className="pt-2">
+        <div className="pt-1">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-gray-500">Signal Stärke</span>
             <span className={`text-xs font-bold ${textColor}`}>

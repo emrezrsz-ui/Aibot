@@ -21,7 +21,15 @@ export interface SignalData {
   ema26: number;
   signal: "BUY" | "SELL" | "NEUTRAL";
   strength: number; // 0-100
+  stopLoss: number;
+  takeProfit: number;
   timestamp: number;
+}
+
+export interface CurrencyInfo {
+  symbol: string;
+  displayName: string;
+  color: string; // Hex color für Markenfarbe
 }
 
 /**
@@ -73,6 +81,37 @@ export function calculateEMA(prices: number[], period: number): number {
 }
 
 /**
+ * Berechnet Stop Loss und Take Profit
+ * BUY: SL = 1.5% unter Preis, TP = 3% über Preis
+ * SELL: SL = 1.5% über Preis, TP = 3% unter Preis
+ */
+export function calculateStopLossAndTakeProfit(
+  signal: "BUY" | "SELL" | "NEUTRAL",
+  currentPrice: number
+): { stopLoss: number; takeProfit: number } {
+  if (signal === "NEUTRAL") {
+    return { stopLoss: 0, takeProfit: 0 };
+  }
+
+  if (signal === "BUY") {
+    const stopLoss = currentPrice * 0.985; // 1.5% unter
+    const takeProfit = currentPrice * 1.03; // 3% über
+    return {
+      stopLoss: Math.round(stopLoss * 100) / 100,
+      takeProfit: Math.round(takeProfit * 100) / 100,
+    };
+  }
+
+  // SELL
+  const stopLoss = currentPrice * 1.015; // 1.5% über
+  const takeProfit = currentPrice * 0.97; // 3% unter
+  return {
+    stopLoss: Math.round(stopLoss * 100) / 100,
+    takeProfit: Math.round(takeProfit * 100) / 100,
+  };
+}
+
+/**
  * Generiert Trading-Signale basierend auf RSI und EMA-Crossover
  */
 export function generateSignal(
@@ -113,6 +152,37 @@ export function generateSignal(
 }
 
 /**
+ * Gibt Währungsinformationen zurück (Name und Markenfarbe)
+ */
+export function getCurrencyInfo(symbol: string): CurrencyInfo {
+  const currencyMap: Record<string, CurrencyInfo> = {
+    BTCUSDT: {
+      symbol: "BTCUSDT",
+      displayName: "BTC/USDT",
+      color: "#F7931A", // Bitcoin Orange
+    },
+    ETHUSDT: {
+      symbol: "ETHUSDT",
+      displayName: "ETH/USDT",
+      color: "#627EEA", // Ethereum Purple-Blue
+    },
+    SOLUSDT: {
+      symbol: "SOLUSDT",
+      displayName: "SOL/USDT",
+      color: "#14F195", // Solana Green
+    },
+  };
+
+  return (
+    currencyMap[symbol] || {
+      symbol,
+      displayName: symbol.replace("USDT", "/USDT"),
+      color: "#00d9ff",
+    }
+  );
+}
+
+/**
  * Konvertiert Binance-Kerzendaten in das interne Format
  */
 export function parseBinanceCandles(data: any[]): CandleData[] {
@@ -131,4 +201,14 @@ export function parseBinanceCandles(data: any[]): CandleData[] {
  */
 export function extractClosePrices(candles: CandleData[]): number[] {
   return candles.map((c) => c.close);
+}
+
+/**
+ * Formatiert Preis mit korrekter Dezimalstelle
+ */
+export function formatPriceValue(price: number, decimals: number = 2): string {
+  return price.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
