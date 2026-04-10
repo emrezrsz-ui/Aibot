@@ -4,7 +4,7 @@
  * Design Philosophy: Futuristisches Neon-Trading-Terminal
  */
 
-const BINANCE_API_BASE = "https://api.binance.com/api/v3";
+const BINANCE_API_BASE = "https://api.binance.us/api/v3";
 
 export interface BinanceTickerData {
   symbol: string;

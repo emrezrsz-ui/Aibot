@@ -22,6 +22,7 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
 
   /**
    * Generiere ein neues Signal und erstelle einen Trade
+   * HARD-LOCK: Wenn ein Trade ACTIVE ist, wird diese Funktion komplett ignoriert
    */
   const generateSignal = (
     symbol: string,
@@ -32,9 +33,10 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
     setTradingState((prev) => {
       const coinState = prev[symbol];
 
-      // Wenn bereits ein aktiver Trade existiert, ignoriere
+      // HARD-LOCK: Wenn bereits ein aktiver Trade existiert, IGNORIERE KOMPLETT
       if (coinState?.activeTrade?.status === "ACTIVE") {
-        return prev;
+        console.log(`[HARD-LOCK] ${symbol}: Trade ACTIVE - Signal ${type} BLOCKIERT`);
+        return prev; // Keine Änderungen, State bleibt unverändert
       }
 
       const currentPrice = marketData[symbol] || 0;
@@ -45,6 +47,7 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
         [symbol]: {
           ...coinState,
           activeTrade: newTrade,
+          scannerPaused: false,
         },
       };
     });

@@ -99,6 +99,16 @@ export function SignalBadge({ signal, activeTrade }: SignalBadgeProps) {
           </div>
         </div>
 
+        {/* Scanner Paused Notice */}
+        {isTradeActive && (
+          <div className="flex items-center gap-1.5 bg-yellow-900/20 border border-yellow-500/30 rounded px-2 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+            <span className="text-[10px] font-mono text-yellow-400/80 tracking-wide">
+              Scanner paused - Trade in progress...
+            </span>
+          </div>
+        )}
+
         {/* Active Trade Levels */}
         {isTradeActive && activeTrade && (
           <div className="bg-cyan-900/20 border border-cyan-500/30 rounded p-2">
