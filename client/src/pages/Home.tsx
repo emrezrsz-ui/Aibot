@@ -57,56 +57,57 @@ export default function Home() {
 
       {/* Content */}
       <div className="relative z-10">
+        {/* Disclaimer - Always visible at top */}
+        <div className="bg-red-900/30 border-b border-red-500/50 px-4 py-3 md:px-6 md:py-4">
+          <div className="max-w-7xl mx-auto flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-red-400 font-bold text-sm md:text-base">
+                ⚠️ ZU EXPERIMENTELLEN ZWECKEN - KEINE ANLAGEBERATUNG
+              </p>
+              <p className="text-red-300 text-xs md:text-sm mt-1">
+                Dieses Dashboard dient nur zu Bildungszwecken. Die angezeigten Signale sind keine Anlageberatung.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Header */}
         <header className="border-b border-cyan-400/20 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-20">
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            {/* Disclaimer */}
-            <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-red-400 font-bold text-lg">
-                  ⚠️ ZU EXPERIMENTELLEN ZWECKEN - KEINE ANLAGEBERATUNG
-                </p>
-                <p className="text-red-300 text-sm mt-1">
-                  Dieses Dashboard dient nur zu Bildungszwecken. Die angezeigten
-                  Signale sind keine Anlageberatung. Treffen Sie
-                  Investitionsentscheidungen auf eigene Verantwortung.
-                </p>
-              </div>
-            </div>
-
-            {/* Title and Controls */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-magenta-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+          <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-5">
+            {/* Title and Controls - Responsive */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+              <div className="min-w-0">
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 via-magenta-400 to-cyan-400 bg-clip-text text-transparent mb-1">
                   ◆ CRYPTO SIGNAL DASHBOARD ◆
                 </h1>
-                <p className="text-gray-400 text-sm">
+                <p className="text-gray-400 text-xs md:text-sm truncate">
                   Live Trading-Signale basierend auf RSI & EMA-Strategie
                 </p>
               </div>
               <Button
                 onClick={refetch}
                 disabled={loading}
-                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2"
+                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2 text-sm md:text-base flex-shrink-0"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                Aktualisieren
+                <span className="hidden sm:inline">Aktualisieren</span>
+                <span className="sm:hidden">↻</span>
               </Button>
             </div>
 
-            {/* Time and Interval Selection */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
+            {/* Time and Interval Selection - Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm flex-shrink-0">
                 <Clock className="w-4 h-4" />
-                <span>Letzte Aktualisierung: {formattedTime}</span>
+                <span className="truncate">Aktualisierung: {formattedTime}</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1 md:gap-2 overflow-x-auto pb-1">
                 {INTERVALS.map((interval) => (
                   <Button
                     key={interval.value}
                     onClick={() => setSelectedInterval(interval.value)}
-                    className={`font-mono text-xs px-3 py-1 h-auto ${
+                    className={`font-mono text-xs px-2 md:px-3 py-1 h-auto flex-shrink-0 ${
                       selectedInterval === interval.value
                         ? "bg-cyan-500 text-black hover:bg-cyan-600"
                         : "bg-gray-800 text-cyan-400 hover:bg-gray-700 border border-cyan-400/30"
@@ -121,7 +122,7 @@ export default function Home() {
         </header>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-6 py-8">
+        <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           {/* Signal Summary */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="p-4 bg-green-900/30 border border-green-400/50 rounded-lg">
@@ -188,12 +189,11 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="border-t border-cyan-400/20 bg-gray-900/50 mt-12">
-          <div className="max-w-7xl mx-auto px-6 py-6 text-center text-gray-500 text-xs font-mono">
-            <p>
-              Datenquelle: Binance API | RSI (14) & EMA (12/26) Strategie |
-              Aktualisierung: Alle 10 Sekunden
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6 text-center text-gray-500 text-xs font-mono">
+            <p className="text-xs md:text-sm">
+              Datenquelle: Binance API | RSI (14) & EMA (12/26) Strategie | Aktualisierung: Alle 10 Sekunden
             </p>
-            <p className="mt-2">
+            <p className="mt-2 text-xs">
               © 2026 Crypto Signal Dashboard | Nur zu Bildungszwecken
             </p>
           </div>
