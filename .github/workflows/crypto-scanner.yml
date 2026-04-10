@@ -1,0 +1,60 @@
+name: 🤖 Crypto Signal Scanner (24/7 Cron)
+
+# ─── Auslöser ─────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    # Alle 5 Minuten scannen (GitHub Actions Minimum: 5 Minuten)
+    - cron: "*/5 * * * *"
+  # Manuell auslösbar über GitHub UI
+  workflow_dispatch:
+    inputs:
+      interval:
+        description: "Zeitintervall für den Scan (1m, 5m, 15m, 1h, 4h)"
+        required: false
+        default: "15m"
+      force_notify:
+        description: "Benachrichtigungen erzwingen (auch unter 75%)"
+        required: false
+        default: "false"
+
+# ─── Berechtigungen ───────────────────────────────────────────────────────────
+permissions:
+  contents: read
+
+# ─── Jobs ─────────────────────────────────────────────────────────────────────
+jobs:
+  scan:
+    name: 📡 Markt scannen und Signale speichern
+    runs-on: ubuntu-latest
+    timeout-minutes: 4  # Verhindert hängende Jobs
+
+    steps:
+      - name: 📥 Code auschecken
+        uses: actions/checkout@v4
+
+      - name: 🟢 Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: scanner-backend/package.json
+
+      - name: 📦 Abhängigkeiten installieren
+        run: |
+          cd scanner-backend
+          npm ci --production
+
+      - name: 🔍 Markt scannen und Signale in Supabase speichern
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCAN_INTERVAL: ${{ github.event.inputs.interval || '15m' }}
+          FORCE_NOTIFY: ${{ github.event.inputs.force_notify || 'false' }}
+        run: |
+          cd scanner-backend
+          node cron-scan.js
+
+      - name: 📊 Scan-Ergebnis ausgeben
+        if: always()
+        run: |
+          echo "✅ Scan abgeschlossen: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"

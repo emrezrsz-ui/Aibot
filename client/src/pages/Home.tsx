@@ -6,14 +6,15 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useTradeSignals } from "@/hooks/useTradeSignals";
-import { useTradeMonitoring } from "@/hooks/useTradeMonitoring";
+import { useSupabaseTrades } from "@/hooks/useSupabaseTrades";
 import { useNotifications } from "@/hooks/useNotifications";
 import { SignalBadge } from "@/components/SignalBadge";
 import { TradeHistory } from "@/components/TradeHistory";
 import { MarketDataCard } from "@/components/MarketDataCard";
 import { AICommandCenter } from "@/components/AICommandCenter";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw, Clock, Bell, BellOff, X } from "lucide-react";
+import { AlertCircle, RefreshCw, Clock, Bell, BellOff, X, Database, HardDrive } from "lucide-react";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
 const INTERVALS = [
@@ -27,14 +28,16 @@ const INTERVALS = [
 export default function Home() {
   const [selectedInterval, setSelectedInterval] = useState("15m");
   const [showNotifBanner, setShowNotifBanner] = useState(false);
+
   const { signals, loading, error, lastUpdate, refetch, marketData } = useTradeSignals({
     symbols: SYMBOLS,
     interval: selectedInterval,
     refreshInterval: 10000,
   });
 
-  // Trade Monitoring
-  const { tradingState, generateSignal } = useTradeMonitoring(marketData);
+  // Trade-Persistenz: Supabase (wenn konfiguriert) oder LocalStorage
+  const { tradingState, generateSignal, isLoading: tradesLoading, storageMode } =
+    useSupabaseTrades(marketData);
 
   // Notifications
   const { permission, isSupported, requestPermission, checkAndNotify } = useNotifications();
@@ -45,10 +48,9 @@ export default function Home() {
     tradingStateRef.current = tradingState;
   }, [tradingState]);
 
-  // Stabiles generateSignal via useCallback
   const stableGenerateSignal = useCallback(generateSignal, []);
 
-  // Zeige Benachrichtigungs-Banner nach 3 Sekunden (nur wenn noch nicht entschieden)
+  // Zeige Benachrichtigungs-Banner nach 3 Sekunden
   useEffect(() => {
     if (!isSupported) return;
     if (permission === "default") {
@@ -57,19 +59,21 @@ export default function Home() {
     }
   }, [isSupported, permission]);
 
-  // Ref für bereits gemeldete Signale (verhindert Spam)
+  // Ref für bereits gemeldete Signale
   const notifiedRef = useRef<Set<string>>(new Set());
 
-  // Auto-generate signals - NUR wenn sich signals oder selectedInterval ändert
-  // tradingState ist NICHT in den Dependencies (nutze Ref stattdessen)
+  // Auto-generate signals mit HARD-LOCK
   useEffect(() => {
     signals.forEach((signal) => {
       if (signal.signal !== "NEUTRAL") {
-        // Lese aktuellen State via Ref - kein Re-Trigger!
         const coinState = tradingStateRef.current[signal.symbol];
-        // HARD-LOCK: Generiere Signal NUR wenn KEIN aktiver Trade existiert
         if (!coinState?.activeTrade || coinState.activeTrade.status !== "ACTIVE") {
-          stableGenerateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength, selectedInterval);
+          stableGenerateSignal(
+            signal.symbol,
+            signal.signal as "BUY" | "SELL",
+            signal.strength,
+            selectedInterval
+          );
         }
 
         // Benachrichtigung für starke Signale (>75%)
@@ -77,7 +81,6 @@ export default function Home() {
           const notifKey = `${signal.symbol}-${signal.signal}-${selectedInterval}-${Math.floor(Date.now() / 120000)}`;
           if (!notifiedRef.current.has(notifKey)) {
             notifiedRef.current.add(notifKey);
-            // Bereinige alten Cache
             if (notifiedRef.current.size > 50) {
               const entries = Array.from(notifiedRef.current);
               notifiedRef.current = new Set(entries.slice(-25));
@@ -94,7 +97,7 @@ export default function Home() {
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signals, selectedInterval]); // tradingState BEWUSST NICHT hier - nutze Ref!
+  }, [signals, selectedInterval]);
 
   const formattedTime = useMemo(() => {
     return new Date(lastUpdate).toLocaleTimeString("de-DE", {
@@ -130,7 +133,7 @@ export default function Home() {
 
       {/* Content */}
       <div className="relative z-10">
-        {/* Disclaimer - Compact version */}
+        {/* Disclaimer */}
         <div className="bg-red-900/20 border-b border-red-500/30 px-4 py-2 md:px-6">
           <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs md:text-sm">
             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
@@ -172,10 +175,23 @@ export default function Home() {
           </div>
         )}
 
-        {/* Header - Sticky with scroll optimization */}
+        {/* Supabase-Konfigurationshinweis (nur wenn nicht konfiguriert) */}
+        {!isSupabaseConfigured && (
+          <div className="bg-yellow-900/20 border-b border-yellow-500/30 px-4 py-2 md:px-6">
+            <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs">
+              <HardDrive className="w-3 h-3 text-yellow-400 flex-shrink-0" />
+              <p className="text-yellow-400/80 font-mono">
+                Lokaler Modus — Daten werden im Browser gespeichert.
+                Füge <code className="text-yellow-300">VITE_SUPABASE_URL</code> und{" "}
+                <code className="text-yellow-300">VITE_SUPABASE_ANON_KEY</code> in den Einstellungen hinzu für persistente Cloud-Speicherung.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Header */}
         <header className="border-b border-cyan-400/20 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-20 transition-all duration-300">
           <div className="max-w-7xl mx-auto px-3 py-2 md:px-6 md:py-3">
-            {/* Title and Controls - Compact */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
               <div className="min-w-0">
                 <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-cyan-400 via-magenta-400 to-cyan-400 bg-clip-text text-transparent">
@@ -183,7 +199,26 @@ export default function Home() {
                 </h1>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Notification Status Indicator */}
+                {/* Storage-Mode-Indikator */}
+                <div
+                  title={storageMode === "supabase" ? "Supabase Cloud-Speicher aktiv" : "Lokaler Browser-Speicher"}
+                  className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono border ${
+                    storageMode === "supabase"
+                      ? "border-green-400/50 text-green-400 bg-green-900/20"
+                      : "border-yellow-400/50 text-yellow-400 bg-yellow-900/20"
+                  }`}
+                >
+                  {storageMode === "supabase" ? (
+                    <Database className="w-3 h-3" />
+                  ) : (
+                    <HardDrive className="w-3 h-3" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {storageMode === "supabase" ? "Cloud" : "Lokal"}
+                  </span>
+                </div>
+
+                {/* Notification Status */}
                 {isSupported && (
                   <button
                     onClick={() => permission === "default" ? setShowNotifBanner(true) : undefined}
@@ -212,6 +247,7 @@ export default function Home() {
                     </span>
                   </button>
                 )}
+
                 <Button
                   onClick={refetch}
                   disabled={loading}
@@ -223,7 +259,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Time and Interval Selection - Compact */}
+            {/* Time and Interval Selection */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center gap-1 text-gray-400 text-xs flex-shrink-0">
                 <Clock className="w-3 h-3" />
@@ -274,14 +310,14 @@ export default function Home() {
           )}
 
           {/* Loading State */}
-          {loading && signals.length === 0 && (
+          {(loading || tradesLoading) && signals.length === 0 && (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="inline-block">
                   <div className="w-12 h-12 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
                 </div>
                 <p className="text-cyan-400 mt-4 font-mono">
-                  Daten werden geladen...
+                  {tradesLoading ? "Trades werden aus Supabase geladen..." : "Daten werden geladen..."}
                 </p>
               </div>
             </div>
@@ -336,7 +372,10 @@ export default function Home() {
             <p className="text-xs md:text-sm">
               Datenquelle: Binance API | RSI (14) & EMA (12/26) Strategie | Aktualisierung: Alle 10 Sekunden
             </p>
-            <p className="mt-2 text-xs">
+            <p className="mt-1 text-xs">
+              Speicher: {storageMode === "supabase" ? "☁️ Supabase Cloud" : "💾 Lokaler Browser-Speicher"}
+            </p>
+            <p className="mt-1 text-xs">
               © 2026 Crypto Signal Dashboard | Nur zu Bildungszwecken
             </p>
           </div>
