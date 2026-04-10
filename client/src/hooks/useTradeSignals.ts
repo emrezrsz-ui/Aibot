@@ -22,12 +22,22 @@ export interface UseTradeSignalsOptions {
   refreshInterval?: number; // ms
 }
 
+export interface UseTradeSignalsReturn {
+  signals: SignalData[];
+  marketData: Record<string, number>;
+  loading: boolean;
+  error: string | null;
+  lastUpdate: number;
+  refetch: () => Promise<void>;
+}
+
 export function useTradeSignals({
   symbols,
   interval,
   refreshInterval = 5000,
 }: UseTradeSignalsOptions) {
   const [signals, setSignals] = useState<SignalData[]>([]);
+  const [marketData, setMarketData] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
@@ -80,6 +90,14 @@ export function useTradeSignals({
 
       const results = await Promise.all(signalPromises);
       setSignals(results);
+      
+      // Erstelle marketData Map für Trade Monitoring
+      const marketDataMap: Record<string, number> = {};
+      results.forEach((result) => {
+        marketDataMap[result.symbol] = result.currentPrice;
+      });
+      setMarketData(marketDataMap);
+      
       setLastUpdate(Date.now());
       setLoading(false);
     } catch (err) {
@@ -103,6 +121,7 @@ export function useTradeSignals({
 
   return {
     signals,
+    marketData,
     loading,
     error,
     lastUpdate,

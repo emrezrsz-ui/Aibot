@@ -4,9 +4,11 @@
  * Design Philosophy: Futuristisches Neon-Trading-Terminal
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTradeSignals } from "@/hooks/useTradeSignals";
+import { useTradeMonitoring } from "@/hooks/useTradeMonitoring";
 import { SignalBadge } from "@/components/SignalBadge";
+import { TradeHistory } from "@/components/TradeHistory";
 import { MarketDataCard } from "@/components/MarketDataCard";
 import { AICommandCenter } from "@/components/AICommandCenter";
 import { Button } from "@/components/ui/button";
@@ -23,11 +25,27 @@ const INTERVALS = [
 
 export default function Home() {
   const [selectedInterval, setSelectedInterval] = useState("15m");
-  const { signals, loading, error, lastUpdate, refetch } = useTradeSignals({
+  const { signals, loading, error, lastUpdate, refetch, marketData } = useTradeSignals({
     symbols: SYMBOLS,
     interval: selectedInterval,
     refreshInterval: 10000,
   });
+
+  // Trade Monitoring
+  const { tradingState, generateSignal } = useTradeMonitoring(marketData);
+
+  // Auto-generate signals wenn neue Signale erkannt werden
+  useEffect(() => {
+    signals.forEach((signal) => {
+      if (signal.signal !== "NEUTRAL") {
+        const coinState = tradingState[signal.symbol];
+        // Generiere Signal nur wenn kein aktiver Trade existiert
+        if (!coinState?.activeTrade || coinState.activeTrade.status !== "ACTIVE") {
+          generateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength);
+        }
+      }
+    });
+  }, [signals, tradingState, generateSignal]);
 
   const formattedTime = useMemo(() => {
     return new Date(lastUpdate).toLocaleTimeString("de-DE", {
@@ -168,9 +186,19 @@ export default function Home() {
                 ▸ TRADING-SIGNALE
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {signals.map((signal) => (
-                  <SignalBadge key={signal.symbol} signal={signal} />
-                ))}
+                {signals.map((signal) => {
+                  const activeTrade = tradingState[signal.symbol]?.activeTrade;
+                  return (
+                    <div key={signal.symbol}>
+                      <SignalBadge signal={signal} activeTrade={activeTrade} />
+                      <TradeHistory
+                        symbol={signal.symbol}
+                        trades={tradingState[signal.symbol]?.history || []}
+                        winrate={tradingState[signal.symbol]?.winrate || 0}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

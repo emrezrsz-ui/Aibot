@@ -1,19 +1,22 @@
 /**
  * Signal Badge Component
  * Zeigt Trading-Signale mit Neon-Styling, Währungsnamen und Risikomanagement an
- * Design Philosophy: Futuristisches Neon-Trading-Terminal
+ * Design Philosophy: Futuristisches Neon-Trading-Terminal mit Trade-Persistenz
  */
 
 import { SignalData, getCurrencyInfo } from "@/lib/indicators";
+import { Trade } from "@/lib/tradeSystem";
 
 interface SignalBadgeProps {
   signal: SignalData;
+  activeTrade?: Trade | null;
 }
 
-export function SignalBadge({ signal }: SignalBadgeProps) {
+export function SignalBadge({ signal, activeTrade }: SignalBadgeProps) {
   const isBuy = signal.signal === "BUY";
   const isSell = signal.signal === "SELL";
   const isNeutral = signal.signal === "NEUTRAL";
+  const isTradeActive = activeTrade?.status === "ACTIVE";
 
   const bgColor = isBuy
     ? "bg-green-900/30 border-green-400/50"
@@ -49,6 +52,7 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
         ${bgColor} ${glowColor}
         transition-all duration-300 hover:shadow-xl
         overflow-hidden group
+        ${isTradeActive ? "trade-active" : ""}
       `}
     >
       {/* Animated background glow */}
@@ -62,7 +66,7 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
 
       {/* Content */}
       <div className="relative z-10 space-y-3">
-        {/* Header: Signal Type + Currency Name */}
+        {/* Header: Signal Type + Currency Name + Trade Status */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className={`font-mono font-bold text-lg ${textColor} flex-shrink-0`}>
@@ -74,6 +78,11 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
             >
               {currencyInfo.displayName}
             </span>
+            {isTradeActive && (
+              <span className="text-xs font-bold text-cyan-400 neon-glow animate-pulse ml-2">
+                ◆ TRADE ACTIVE
+              </span>
+            )}
           </div>
           <span className="text-xs text-gray-500 font-mono flex-shrink-0">
             RSI: {signal.rsi.toFixed(1)}
@@ -90,27 +99,54 @@ export function SignalBadge({ signal }: SignalBadgeProps) {
           </div>
         </div>
 
-        {/* Stop Loss & Take Profit */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2 bg-gray-800/30 rounded border border-red-500/30">
-            <p className="text-red-400 font-bold mb-0.5">SL</p>
-            <p className="font-mono text-red-400 text-sm">
-              ${signal.stopLoss.toFixed(2)}
-            </p>
-            <p className="text-red-300 text-xs mt-0.5">
-              -{slLoss.toFixed(2)}%
-            </p>
+        {/* Active Trade Levels */}
+        {isTradeActive && activeTrade && (
+          <div className="bg-cyan-900/20 border border-cyan-500/30 rounded p-2">
+            <div className="text-xs text-cyan-400/60 font-mono mb-2">▸ ACTIVE TRADE</div>
+            <div className="flex justify-between text-xs font-mono mb-1">
+              <span className="text-cyan-400/60">Entry:</span>
+              <span className="text-cyan-300">
+                ${activeTrade.entryPrice.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs font-mono mb-1">
+              <span className="text-red-400">SL:</span>
+              <span className="text-red-300">
+                ${activeTrade.stopLoss.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs font-mono">
+              <span className="text-green-400">TP:</span>
+              <span className="text-green-300">
+                ${activeTrade.takeProfit.toFixed(2)}
+              </span>
+            </div>
           </div>
-          <div className="p-2 bg-gray-800/30 rounded border border-green-500/30">
-            <p className="text-green-400 font-bold mb-0.5">TP</p>
-            <p className="font-mono text-green-400 text-sm">
-              ${signal.takeProfit.toFixed(2)}
-            </p>
-            <p className="text-green-300 text-xs mt-0.5">
-              +{tpGain.toFixed(2)}%
-            </p>
+        )}
+
+        {/* Stop Loss & Take Profit (für inaktive Signale) */}
+        {!isTradeActive && (
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2 bg-gray-800/30 rounded border border-red-500/30">
+              <p className="text-red-400 font-bold mb-0.5">SL</p>
+              <p className="font-mono text-red-400 text-sm">
+                ${signal.stopLoss.toFixed(2)}
+              </p>
+              <p className="text-red-300 text-xs mt-0.5">
+                -{slLoss.toFixed(2)}%
+              </p>
+            </div>
+            <div className="p-2 bg-gray-800/30 rounded border border-green-500/30">
+              <p className="text-green-400 font-bold mb-0.5">TP</p>
+              <p className="font-mono text-green-400 text-sm">
+                ${signal.takeProfit.toFixed(2)}
+              </p>
+              <p className="text-green-300 text-xs mt-0.5">
+                +{tpGain.toFixed(2)}%
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* EMAs */}
         <div className="text-xs">
