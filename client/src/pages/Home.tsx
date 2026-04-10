@@ -108,8 +108,18 @@ export default function Home() {
     });
   }, [lastUpdate]);
 
-  const buySignals = signals.filter((s) => s.signal === "BUY");
-  const sellSignals = signals.filter((s) => s.signal === "SELL");
+  // Zähle Signale korrekt:
+  // Wenn ein aktiver Trade läuft → zähle den Trade-Typ (nicht das neue Markt-Signal)
+  // Wenn kein Trade aktiv → zähle das rohe Markt-Signal
+  const effectiveSignals = signals.map((s) => {
+    const activeTrade = tradingState[s.symbol]?.activeTrade;
+    if (activeTrade?.status === "ACTIVE") {
+      return { ...s, signal: activeTrade.type as "BUY" | "SELL" | "NEUTRAL" };
+    }
+    return s;
+  });
+  const buySignals = effectiveSignals.filter((s) => s.signal === "BUY");
+  const sellSignals = effectiveSignals.filter((s) => s.signal === "SELL");
 
   const handleRequestPermission = async () => {
     await requestPermission();
