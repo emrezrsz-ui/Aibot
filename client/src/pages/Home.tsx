@@ -7,12 +7,13 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useTradeSignals } from "@/hooks/useTradeSignals";
 import { useTradeMonitoring } from "@/hooks/useTradeMonitoring";
+import { useNotifications } from "@/hooks/useNotifications";
 import { SignalBadge } from "@/components/SignalBadge";
 import { TradeHistory } from "@/components/TradeHistory";
 import { MarketDataCard } from "@/components/MarketDataCard";
 import { AICommandCenter } from "@/components/AICommandCenter";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw, Clock } from "lucide-react";
+import { AlertCircle, RefreshCw, Clock, Bell, BellOff, X } from "lucide-react";
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
 const INTERVALS = [
@@ -25,6 +26,7 @@ const INTERVALS = [
 
 export default function Home() {
   const [selectedInterval, setSelectedInterval] = useState("15m");
+  const [showNotifBanner, setShowNotifBanner] = useState(false);
   const { signals, loading, error, lastUpdate, refetch, marketData } = useTradeSignals({
     symbols: SYMBOLS,
     interval: selectedInterval,
@@ -34,6 +36,9 @@ export default function Home() {
   // Trade Monitoring
   const { tradingState, generateSignal } = useTradeMonitoring(marketData);
 
+  // Notifications
+  const { permission, isSupported, requestPermission, checkAndNotify } = useNotifications();
+
   // Ref für tradingState um Endlosschleifen zu vermeiden
   const tradingStateRef = useRef(tradingState);
   useEffect(() => {
@@ -42,6 +47,18 @@ export default function Home() {
 
   // Stabiles generateSignal via useCallback
   const stableGenerateSignal = useCallback(generateSignal, []);
+
+  // Zeige Benachrichtigungs-Banner nach 3 Sekunden (nur wenn noch nicht entschieden)
+  useEffect(() => {
+    if (!isSupported) return;
+    if (permission === "default") {
+      const timer = setTimeout(() => setShowNotifBanner(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSupported, permission]);
+
+  // Ref für bereits gemeldete Signale (verhindert Spam)
+  const notifiedRef = useRef<Set<string>>(new Set());
 
   // Auto-generate signals - NUR wenn sich signals oder selectedInterval ändert
   // tradingState ist NICHT in den Dependencies (nutze Ref stattdessen)
@@ -53,6 +70,26 @@ export default function Home() {
         // HARD-LOCK: Generiere Signal NUR wenn KEIN aktiver Trade existiert
         if (!coinState?.activeTrade || coinState.activeTrade.status !== "ACTIVE") {
           stableGenerateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength, selectedInterval);
+        }
+
+        // Benachrichtigung für starke Signale (>75%)
+        if (signal.strength >= 75) {
+          const notifKey = `${signal.symbol}-${signal.signal}-${selectedInterval}-${Math.floor(Date.now() / 120000)}`;
+          if (!notifiedRef.current.has(notifKey)) {
+            notifiedRef.current.add(notifKey);
+            // Bereinige alten Cache
+            if (notifiedRef.current.size > 50) {
+              const entries = Array.from(notifiedRef.current);
+              notifiedRef.current = new Set(entries.slice(-25));
+            }
+            checkAndNotify({
+              symbol: signal.symbol,
+              signal: signal.signal as "BUY" | "SELL",
+              timeframe: selectedInterval,
+              strength: signal.strength,
+              price: signal.currentPrice,
+            });
+          }
         }
       }
     });
@@ -69,6 +106,11 @@ export default function Home() {
 
   const buySignals = signals.filter((s) => s.signal === "BUY");
   const sellSignals = signals.filter((s) => s.signal === "SELL");
+
+  const handleRequestPermission = async () => {
+    await requestPermission();
+    setShowNotifBanner(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white font-mono">
@@ -93,10 +135,42 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex items-center gap-2 text-xs md:text-sm">
             <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
             <p className="text-red-400 font-mono">
-              ⚠️ Nur zu Bildungszwecken - Keine Anlageberatung
+              ⚠️ ZU EXPERIMENTELLEN ZWECKEN - KEINE ANLAGEBERATUNG
             </p>
           </div>
         </div>
+
+        {/* Notification Permission Banner */}
+        {showNotifBanner && isSupported && permission === "default" && (
+          <div className="bg-cyan-900/30 border-b border-cyan-400/40 px-4 py-3 md:px-6">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <Bell className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5 sm:mt-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-cyan-300 font-mono text-sm font-bold">
+                  Push-Benachrichtigungen aktivieren?
+                </p>
+                <p className="text-cyan-400/70 font-mono text-xs mt-0.5">
+                  Erhalte sofortige Alerts für starke Signale (&gt;75% Stärke) — auch wenn das Tab im Hintergrund ist.
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button
+                  onClick={handleRequestPermission}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold text-xs h-8 px-3 gap-1"
+                >
+                  <Bell className="w-3 h-3" />
+                  Aktivieren
+                </Button>
+                <Button
+                  onClick={() => setShowNotifBanner(false)}
+                  className="bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold text-xs h-8 px-2"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Header - Sticky with scroll optimization */}
         <header className="border-b border-cyan-400/20 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-20 transition-all duration-300">
@@ -108,14 +182,45 @@ export default function Home() {
                   ◆ CRYPTO SIGNAL DASHBOARD ◆
                 </h1>
               </div>
-              <Button
-                onClick={refetch}
-                disabled={loading}
-                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2 text-xs md:text-sm flex-shrink-0 h-8 px-3"
-              >
-                <RefreshCw className={`w-3 h-3 md:w-4 md:h-4 ${loading ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">Aktualisieren</span>
-              </Button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Notification Status Indicator */}
+                {isSupported && (
+                  <button
+                    onClick={() => permission === "default" ? setShowNotifBanner(true) : undefined}
+                    title={
+                      permission === "granted"
+                        ? "Benachrichtigungen aktiv"
+                        : permission === "denied"
+                        ? "Benachrichtigungen blockiert"
+                        : "Benachrichtigungen aktivieren"
+                    }
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono border transition-colors ${
+                      permission === "granted"
+                        ? "border-green-400/50 text-green-400 bg-green-900/20"
+                        : permission === "denied"
+                        ? "border-red-400/50 text-red-400 bg-red-900/20"
+                        : "border-cyan-400/50 text-cyan-400 bg-cyan-900/20 cursor-pointer hover:bg-cyan-900/40"
+                    }`}
+                  >
+                    {permission === "granted" ? (
+                      <Bell className="w-3 h-3" />
+                    ) : (
+                      <BellOff className="w-3 h-3" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {permission === "granted" ? "Alerts AN" : permission === "denied" ? "Blockiert" : "Alerts"}
+                    </span>
+                  </button>
+                )}
+                <Button
+                  onClick={refetch}
+                  disabled={loading}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2 text-xs md:text-sm h-8 px-3"
+                >
+                  <RefreshCw className={`w-3 h-3 md:w-4 md:h-4 ${loading ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">Aktualisieren</span>
+                </Button>
+              </div>
             </div>
 
             {/* Time and Interval Selection - Compact */}
