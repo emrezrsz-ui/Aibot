@@ -12,6 +12,7 @@ export interface Trade {
   takeProfit: number;
   strength: number; // RSI-basierte Signalstärke (0-100)
   timestamp: number; // Zeitstempel der Signal-Generierung
+  timeframe: string; // z.B. "1m", "5m", "15m", "1h", "4h"
   status: "ACTIVE" | "CLOSED";
   closeReason?: "TP" | "SL"; // Grund für Schließung
   closePrice?: number; // Schlusspreis
@@ -38,7 +39,8 @@ export function createTrade(
   symbol: string,
   type: "BUY" | "SELL",
   currentPrice: number,
-  strength: number
+  strength: number,
+  timeframe: string = "15m"
 ): Trade {
   const slPercentage = 0.015; // 1.5%
   const tpPercentage = 0.03; // 3%
@@ -64,6 +66,7 @@ export function createTrade(
     takeProfit,
     strength,
     timestamp: Date.now(),
+    timeframe,
     status: "ACTIVE",
   };
 }

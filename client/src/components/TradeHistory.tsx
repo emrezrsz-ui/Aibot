@@ -4,20 +4,31 @@ interface TradeHistoryProps {
   symbol: string;
   trades: Trade[];
   winrate: number;
+  currentTimeframe?: string;
 }
 
 /**
  * Komponente zur Anzeige der letzten 5 Trades und Winrate
  */
-export function TradeHistory({ symbol, trades, winrate }: TradeHistoryProps) {
-  if (trades.length === 0) {
+export function TradeHistory({ symbol, trades, winrate, currentTimeframe = "15m" }: TradeHistoryProps) {
+  // Filtere Trades nach aktuellem Timeframe
+  const filteredTrades = trades.filter((trade) => trade.timeframe === currentTimeframe);
+  
+  // Berechne Winrate für diesen Timeframe
+  const timeframeWinrate = filteredTrades.length > 0
+    ? Math.round(
+        (filteredTrades.filter((t) => t.closeReason === "TP").length / filteredTrades.length) * 100
+      )
+    : 0;
+
+  if (filteredTrades.length === 0) {
     return (
       <div className="mt-4 pt-4 border-t border-cyan-500/20">
         <div className="text-xs text-cyan-400/60 font-mono">
-          ▸ LAST 5 TRADES
+          ▸ LAST 5 TRADES ({currentTimeframe})
         </div>
         <div className="mt-2 text-xs text-cyan-400/40 font-mono">
-          Keine Trades noch
+          No trades in this timeframe yet
         </div>
       </div>
     );
@@ -27,22 +38,22 @@ export function TradeHistory({ symbol, trades, winrate }: TradeHistoryProps) {
     <div className="mt-4 pt-4 border-t border-cyan-500/20">
       <div className="flex justify-between items-center mb-3">
         <div className="text-xs text-cyan-400/60 font-mono">
-          ▸ LAST 5 TRADES
+          ▸ LAST 5 TRADES ({currentTimeframe})
         </div>
         <div className="text-xs font-mono">
           <span className="text-cyan-400">WINRATE:</span>{" "}
           <span
             className={
-              winrate >= 50 ? "text-green-400 font-bold" : "text-red-400 font-bold"
+              timeframeWinrate >= 50 ? "text-green-400 font-bold" : "text-red-400 font-bold"
             }
           >
-            {winrate}%
+            {timeframeWinrate}%
           </span>
         </div>
       </div>
 
       <div className="space-y-2">
-        {trades.map((trade, idx) => (
+        {filteredTrades.map((trade, idx) => (
           <div
             key={trade.id}
             className={`text-xs font-mono p-2 rounded border ${
@@ -53,7 +64,7 @@ export function TradeHistory({ symbol, trades, winrate }: TradeHistoryProps) {
           >
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <span className="text-cyan-400/60">#{trades.length - idx}</span>
+                <span className="text-cyan-400/60">#{filteredTrades.length - idx}</span>
                 <span
                   className={
                     trade.type === "BUY"

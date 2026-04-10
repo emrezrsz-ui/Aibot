@@ -41,11 +41,11 @@ export default function Home() {
         const coinState = tradingState[signal.symbol];
         // Generiere Signal nur wenn kein aktiver Trade existiert
         if (!coinState?.activeTrade || coinState.activeTrade.status !== "ACTIVE") {
-          generateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength);
+          generateSignal(signal.symbol, signal.signal as "BUY" | "SELL", signal.strength, selectedInterval);
         }
       }
     });
-  }, [signals, tradingState, generateSignal]);
+  }, [signals, tradingState, generateSignal, selectedInterval]);
 
   const formattedTime = useMemo(() => {
     return new Date(lastUpdate).toLocaleTimeString("de-DE", {
@@ -86,42 +86,38 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Header */}
-        <header className="border-b border-cyan-400/20 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-20">
-          <div className="max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-5">
-            {/* Title and Controls - Responsive */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+        {/* Header - Sticky with scroll optimization */}
+        <header className="border-b border-cyan-400/20 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-20 transition-all duration-300">
+          <div className="max-w-7xl mx-auto px-3 py-2 md:px-6 md:py-3">
+            {/* Title and Controls - Compact */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
               <div className="min-w-0">
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 via-magenta-400 to-cyan-400 bg-clip-text text-transparent mb-1">
+                <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-cyan-400 via-magenta-400 to-cyan-400 bg-clip-text text-transparent">
                   ◆ CRYPTO SIGNAL DASHBOARD ◆
                 </h1>
-                <p className="text-gray-400 text-xs md:text-sm truncate">
-                  Live Trading-Signale basierend auf RSI & EMA-Strategie
-                </p>
               </div>
               <Button
                 onClick={refetch}
                 disabled={loading}
-                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2 text-sm md:text-base flex-shrink-0"
+                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold gap-2 text-xs md:text-sm flex-shrink-0 h-8 px-3"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`w-3 h-3 md:w-4 md:h-4 ${loading ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">Aktualisieren</span>
-                <span className="sm:hidden">↻</span>
               </Button>
             </div>
 
-            {/* Time and Interval Selection - Responsive */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm flex-shrink-0">
-                <Clock className="w-4 h-4" />
-                <span className="truncate">Aktualisierung: {formattedTime}</span>
+            {/* Time and Interval Selection - Compact */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-1 text-gray-400 text-xs flex-shrink-0">
+                <Clock className="w-3 h-3" />
+                <span className="truncate text-xs">Aktualisierung: {formattedTime}</span>
               </div>
-              <div className="flex gap-1 md:gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-1 overflow-x-auto pb-1">
                 {INTERVALS.map((interval) => (
                   <Button
                     key={interval.value}
                     onClick={() => setSelectedInterval(interval.value)}
-                    className={`font-mono text-xs px-2 md:px-3 py-1 h-auto flex-shrink-0 ${
+                    className={`font-mono text-xs px-2 py-1 h-7 flex-shrink-0 transition-colors ${
                       selectedInterval === interval.value
                         ? "bg-cyan-500 text-black hover:bg-cyan-600"
                         : "bg-gray-800 text-cyan-400 hover:bg-gray-700 border border-cyan-400/30"
@@ -195,6 +191,7 @@ export default function Home() {
                         symbol={signal.symbol}
                         trades={tradingState[signal.symbol]?.history || []}
                         winrate={tradingState[signal.symbol]?.winrate || 0}
+                        currentTimeframe={selectedInterval}
                       />
                     </div>
                   );

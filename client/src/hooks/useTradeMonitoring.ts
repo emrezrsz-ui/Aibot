@@ -26,7 +26,8 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
   const generateSignal = (
     symbol: string,
     type: "BUY" | "SELL",
-    strength: number
+    strength: number,
+    timeframe: string = "15m"
   ) => {
     setTradingState((prev) => {
       const coinState = prev[symbol];
@@ -37,7 +38,7 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
       }
 
       const currentPrice = marketData[symbol] || 0;
-      const newTrade = createTrade(symbol, type, currentPrice, strength);
+      const newTrade = createTrade(symbol, type, currentPrice, strength, timeframe);
 
       return {
         ...prev,
