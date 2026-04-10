@@ -72,7 +72,8 @@ export default function Home() {
             signal.symbol,
             signal.signal as "BUY" | "SELL",
             signal.strength,
-            selectedInterval
+            selectedInterval,
+            signal.currentPrice  // Preis direkt übergeben — kein stale-closure
           );
         }
 

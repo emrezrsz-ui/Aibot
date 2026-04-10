@@ -104,12 +104,19 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
 
   const monitoringIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const tradingStateRef = useRef(tradingState);
+  // Ref für marketData: verhindert stale-closure in generateSignal
+  const marketDataRef = useRef<Record<string, number>>(marketData);
 
   useEffect(() => {
     tradingStateRef.current = tradingState;
     // Immer in LocalStorage spiegeln (als Offline-Backup)
     saveToLocalStorage(tradingState);
   }, [tradingState]);
+
+  // marketDataRef immer aktuell halten
+  useEffect(() => {
+    marketDataRef.current = marketData;
+  }, [marketData]);
 
   // ─── Beim Start: Aktive Trades aus Supabase wiederherstellen ───────────────
   useEffect(() => {
@@ -166,7 +173,8 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
 
   // ─── Signal generieren und Trade öffnen ────────────────────────────────────
   const generateSignal = useCallback(
-    (symbol: string, type: "BUY" | "SELL", strength: number, timeframe: string = "15m") => {
+    // currentPrice wird direkt übergeben (aus signal.currentPrice) — kein stale-closure Problem
+    (symbol: string, type: "BUY" | "SELL", strength: number, timeframe: string = "15m", currentPrice: number = 0) => {
       setTradingState(prev => {
         const coinState = prev[symbol];
 
@@ -175,10 +183,12 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
           return prev;
         }
 
-        const currentPrice = marketData[symbol] || 0;
-        if (currentPrice === 0) return prev;
+        // Preis aus Parameter oder aus Ref als Fallback
+        const price = currentPrice > 0 ? currentPrice : (marketDataRef.current[symbol] || 0);
+        if (price === 0) return prev;
+        const currentPriceToUse = price;
 
-        const newTrade = createTrade(symbol, type, currentPrice, strength, timeframe);
+        const newTrade = createTrade(symbol, type, currentPriceToUse, strength, timeframe);
 
         // Asynchron in Supabase speichern
         if (isSupabaseConfigured) {
@@ -196,6 +206,7 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
         };
       });
     },
+    // Kein Dependency-Array nötig — marketDataRef ist immer aktuell
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
