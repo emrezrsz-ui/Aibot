@@ -1,6 +1,6 @@
 /**
  * Command Parser für AI Command Center
- * Parst Befehle wie "XRP5" oder "BTC15" und führt Markt-Analysen durch
+ * Parst Befehle wie "XRP5" oder "BTC15m" und führt Markt-Analysen durch
  * Design Philosophy: Futuristisches Neon-Trading-Terminal
  */
 
@@ -18,26 +18,29 @@ export interface CommandAnalysisResult {
   ticker: string;
   displayName: string;
   timeframe: string;
+  displayTimeframe: string; // Für die Anzeige (z.B. "1H", "5M")
   currentPrice: number;
   rsi: number;
   ema12: number;
   ema26: number;
   signal: "BUY" | "SELL" | "NEUTRAL";
   reasoning: string;
+  accuracy: number; // Prozentsatz basierend auf RSI-Abstand
   timestamp: number;
   error?: string;
 }
 
 // Mapping von Timeframe-Shortcuts zu Binance-Intervallen
-const TIMEFRAME_MAP: Record<string, string> = {
-  "1": "1m",
-  "5": "5m",
-  "15": "15m",
-  "1h": "1h",
-  "4h": "4h",
-  "1d": "1d",
-  "h": "1h",
-  "d": "1d",
+const TIMEFRAME_MAP: Record<string, { binance: string; display: string }> = {
+  "1": { binance: "1m", display: "1M" },
+  "5": { binance: "5m", display: "5M" },
+  "15": { binance: "15m", display: "15M" },
+  "1h": { binance: "1h", display: "1H" },
+  "4h": { binance: "4h", display: "4H" },
+  "1d": { binance: "1d", display: "1D" },
+  "h": { binance: "1h", display: "1H" },
+  "d": { binance: "1d", display: "1D" },
+  "m": { binance: "1m", display: "1M" },
 };
 
 // Bekannte Kryptowährungen
@@ -60,12 +63,13 @@ const KNOWN_TICKERS = [
 ];
 
 /**
- * Parst einen Befehl wie "XRP5" oder "BTC15m"
- * Gibt Ticker und Timeframe zurück
+ * Parst einen Befehl wie "XRP5" oder "BTC15m" oder "ETH1h"
+ * Gibt Ticker, Binance-Timeframe und Display-Timeframe zurück
  */
 export function parseCommand(command: string): {
   ticker: string;
   timeframe: string;
+  displayTimeframe: string;
   error?: string;
 } {
   const input = command.toUpperCase().trim();
@@ -88,6 +92,7 @@ export function parseCommand(command: string): {
     return {
       ticker: "",
       timeframe: "",
+      displayTimeframe: "",
       error: `Unbekannter Ticker. Versuche: ${KNOWN_TICKERS.slice(0, 5).join(", ")}...`,
     };
   }
@@ -97,10 +102,32 @@ export function parseCommand(command: string): {
     timeframeStr = "15";
   }
 
-  // Konvertiere Timeframe-Shortcut zu Binance-Format
-  const timeframe = TIMEFRAME_MAP[timeframeStr] || TIMEFRAME_MAP["15"];
+  // Konvertiere Timeframe-Shortcut zu Binance-Format und Display-Format
+  const timeframeConfig = TIMEFRAME_MAP[timeframeStr] || TIMEFRAME_MAP["15"];
+  const timeframe = timeframeConfig.binance;
+  const displayTimeframe = timeframeConfig.display;
 
-  return { ticker, timeframe };
+  return { ticker, timeframe, displayTimeframe };
+}
+
+/**
+ * Berechnet die Accuracy basierend auf RSI-Abstand von Extremen
+ */
+function calculateAccuracy(rsi: number, signal: "BUY" | "SELL" | "NEUTRAL"): number {
+  if (signal === "NEUTRAL") {
+    return 45; // Neutrale Signale haben niedrigere Accuracy
+  }
+
+  if (signal === "BUY") {
+    // Je näher RSI an 30 (überverkauft), desto höher die Accuracy
+    const distance = Math.max(0, 30 - rsi);
+    return Math.min(95, 50 + distance * 1.5);
+  }
+
+  // SELL
+  // Je näher RSI an 70 (overkauft), desto höher die Accuracy
+  const distance = Math.max(0, rsi - 70);
+  return Math.min(95, 50 + distance * 1.5);
 }
 
 /**
@@ -108,7 +135,8 @@ export function parseCommand(command: string): {
  */
 export async function analyzeMarket(
   ticker: string,
-  timeframe: string
+  timeframe: string,
+  displayTimeframe: string
 ): Promise<CommandAnalysisResult> {
   try {
     const symbol = `${ticker}USDT`;
@@ -118,7 +146,7 @@ export async function analyzeMarket(
     const tickerData = await fetchTicker(symbol);
     const currentPrice = parseFloat(tickerData.lastPrice);
 
-    // Fetche Kerzendaten
+    // Fetche Kerzendaten mit dem angeforderten Timeframe
     const klines = await fetchKlines(symbol, timeframe, 100);
     const candles = parseBinanceCandles(klines);
     const closePrices = extractClosePrices(candles);
@@ -136,17 +164,22 @@ export async function analyzeMarket(
       currentPrice
     );
 
+    // Berechne Accuracy
+    const accuracy = calculateAccuracy(rsi, signal);
+
     return {
       success: true,
       ticker,
       displayName: currencyInfo.displayName,
       timeframe,
+      displayTimeframe,
       currentPrice,
       rsi,
       ema12,
       ema26,
       signal,
       reasoning,
+      accuracy: Math.round(accuracy),
       timestamp: Date.now(),
     };
   } catch (error) {
@@ -157,12 +190,14 @@ export async function analyzeMarket(
       ticker,
       displayName: "",
       timeframe,
+      displayTimeframe: "",
       currentPrice: 0,
       rsi: 0,
       ema12: 0,
       ema26: 0,
       signal: "NEUTRAL",
       reasoning: "",
+      accuracy: 0,
       timestamp: Date.now(),
       error: errorMessage,
     };

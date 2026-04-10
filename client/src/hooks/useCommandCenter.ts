@@ -40,7 +40,7 @@ export function useCommandCenter() {
       }
 
       // Führe Analyse durch
-      const analysisResult = await analyzeMarket(parsed.ticker, parsed.timeframe);
+      const analysisResult = await analyzeMarket(parsed.ticker, parsed.timeframe, parsed.displayTimeframe);
 
       if (!analysisResult.success && analysisResult.error) {
         setError(analysisResult.error);
