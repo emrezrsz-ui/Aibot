@@ -8,6 +8,7 @@ import { useState, useMemo } from "react";
 import { useTradeSignals } from "@/hooks/useTradeSignals";
 import { SignalBadge } from "@/components/SignalBadge";
 import { MarketDataCard } from "@/components/MarketDataCard";
+import { AICommandCenter } from "@/components/AICommandCenter";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, Clock } from "lucide-react";
 
@@ -159,6 +160,11 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* AI Command Center */}
+          <div className="mb-12 p-6 bg-gray-900/50 border border-cyan-400/20 rounded-lg">
+            <AICommandCenter />
+          </div>
 
           {/* Signals Grid */}
           {signals.length > 0 && (
