@@ -184,12 +184,12 @@
 /* Trade Active Pulsing Animation */
 @keyframes trade-pulse {
   0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+    opacity: 0.95;
+    box-shadow: 0 0 5px rgba(0, 217, 255, 0.25);
   }
   50% {
-    opacity: 0.7;
-    box-shadow: 0 0 20px rgba(0, 217, 255, 0.8);
+    opacity: 0.85;
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
   }
 }
 

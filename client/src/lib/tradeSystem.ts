@@ -42,8 +42,40 @@ export function createTrade(
   strength: number,
   timeframe: string = "15m"
 ): Trade {
-  const slPercentage = 0.015; // 1.5%
-  const tpPercentage = 0.03; // 3%
+  // Dynamische SL/TP Berechnung basierend auf Timeframe (1:2 Ratio)
+  let slPercentage: number;
+  let tpPercentage: number;
+
+  // Timeframe-spezifische Ziele
+  switch (timeframe.toUpperCase()) {
+    case "1M":
+      slPercentage = 0.002; // 0.2%
+      tpPercentage = 0.004; // 0.4%
+      break;
+    case "5M":
+      slPercentage = 0.003; // 0.3%
+      tpPercentage = 0.006; // 0.6%
+      break;
+    case "15M":
+      slPercentage = 0.005; // 0.5%
+      tpPercentage = 0.01; // 1.0%
+      break;
+    case "1H":
+      slPercentage = 0.008; // 0.8%
+      tpPercentage = 0.016; // 1.6%
+      break;
+    case "4H":
+      slPercentage = 0.015; // 1.5%
+      tpPercentage = 0.03; // 3.0%
+      break;
+    case "1D":
+      slPercentage = 0.025; // 2.5%
+      tpPercentage = 0.05; // 5.0%
+      break;
+    default:
+      slPercentage = 0.005; // 0.5%
+      tpPercentage = 0.01; // 1.0%
+  }
 
   let stopLoss: number;
   let takeProfit: number;
