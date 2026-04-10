@@ -31,16 +31,20 @@ export interface CommandAnalysisResult {
 }
 
 // Mapping von Timeframe-Shortcuts zu Binance-Intervallen
+// WICHTIG: Alle Keys sind UPPERCASE, da der Input zu UPPERCASE konvertiert wird
 const TIMEFRAME_MAP: Record<string, { binance: string; display: string }> = {
   "1": { binance: "1m", display: "1M" },
+  "1M": { binance: "1m", display: "1M" },
   "5": { binance: "5m", display: "5M" },
+  "5M": { binance: "5m", display: "5M" },
   "15": { binance: "15m", display: "15M" },
-  "1h": { binance: "1h", display: "1H" },
-  "4h": { binance: "4h", display: "4H" },
-  "1d": { binance: "1d", display: "1D" },
-  "h": { binance: "1h", display: "1H" },
-  "d": { binance: "1d", display: "1D" },
-  "m": { binance: "1m", display: "1M" },
+  "15M": { binance: "15m", display: "15M" },
+  "1H": { binance: "1h", display: "1H" },
+  "4H": { binance: "4h", display: "4H" },
+  "1D": { binance: "1d", display: "1D" },
+  "H": { binance: "1h", display: "1H" },
+  "D": { binance: "1d", display: "1D" },
+  "M": { binance: "1m", display: "1M" },
 };
 
 // Bekannte Kryptowährungen
@@ -103,7 +107,13 @@ export function parseCommand(command: string): {
   }
 
   // Konvertiere Timeframe-Shortcut zu Binance-Format und Display-Format
+  // timeframeStr ist bereits UPPERCASE, also direkt in Map nachschlagen
   const timeframeConfig = TIMEFRAME_MAP[timeframeStr] || TIMEFRAME_MAP["15"];
+  
+  if (!TIMEFRAME_MAP[timeframeStr]) {
+    console.warn(`Timeframe "${timeframeStr}" nicht in TIMEFRAME_MAP gefunden. Verwende Standard (15m).`);
+  }
+  
   const timeframe = timeframeConfig.binance;
   const displayTimeframe = timeframeConfig.display;
 
