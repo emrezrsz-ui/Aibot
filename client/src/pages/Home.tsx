@@ -14,7 +14,7 @@ import { AICommandCenter } from "@/components/AICommandCenter";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, Clock } from "lucide-react";
 
-const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT"];
+const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
 const INTERVALS = [
   { label: "1m", value: "1m" },
   { label: "5m", value: "5m" },
@@ -185,7 +185,7 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-cyan-400 mb-4 border-b border-cyan-400/20 pb-3">
                 ▸ TRADING-SIGNALE
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {signals.map((signal) => {
                   const activeTrade = tradingState[signal.symbol]?.activeTrade;
                   return (
@@ -208,7 +208,7 @@ export default function Home() {
             <h2 className="text-2xl font-bold text-cyan-400 mb-4 border-b border-cyan-400/20 pb-3">
               ▸ LIVE-MARKTDATEN
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {SYMBOLS.map((symbol) => (
                 <MarketDataCard key={symbol} symbol={symbol} />
               ))}
