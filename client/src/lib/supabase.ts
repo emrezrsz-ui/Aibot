@@ -171,57 +171,63 @@ export async function loadTradeHistory(symbol: string, timeframe?: string): Prom
   return data || [];
 }
 
-/** Neuen Trade in die Datenbank einfügen — adaptiv je nach vorhandenem Schema */
+/** Neuen Trade in die Datenbank einfügen */
 export async function insertTrade(trade: Omit<DbTrade, "created_at">): Promise<DbTrade | null> {
   if (!supabase) return null;
 
-  // Schema-Spalten ermitteln
-  const known = await getKnownColumns();
+  // Vollständiger Insert mit allen Pflichtfeldern
+  const fullInsert: Record<string, unknown> = {
+    id: trade.id,
+    symbol: trade.symbol ?? "",
+    type: trade.type ?? "BUY",
+    entry_price: trade.entry_price ?? 0,
+    stop_loss: trade.stop_loss ?? 0,
+    take_profit: trade.take_profit ?? 0,
+    strength: trade.strength ?? 0,
+    timeframe: trade.timeframe ?? "15m",
+    status: trade.status ?? "ACTIVE",
+  };
 
-  // Alle undefined-Werte entfernen
-  const allFields: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(trade)) {
-    if (value !== undefined) allFields[key] = value;
-  }
-
-  // Auf bekannte Spalten filtern
-  const insertData = filterToKnownColumns(allFields, known);
-
-  if (Object.keys(insertData).length === 0) {
-    console.warn("[Supabase] insertTrade: Keine bekannten Spalten — überspringe");
-    return null;
-  }
+  // Optionale Felder nur wenn vorhanden
+  if (trade.close_reason != null) fullInsert.close_reason = trade.close_reason;
+  if (trade.close_price != null) fullInsert.close_price = trade.close_price;
+  if (trade.opened_at != null) fullInsert.opened_at = trade.opened_at;
+  if (trade.closed_at != null) fullInsert.closed_at = trade.closed_at;
 
   const { data, error } = await supabase
     .from("trades")
-    .insert(insertData)
+    .insert(fullInsert)
     .select()
     .single();
 
   if (error) {
-    console.warn("[Supabase] insertTrade fehlgeschlagen:", error.message);
-
-    // Schema-Cache zurücksetzen und nochmal mit Minimal-Feldern versuchen
-    knownTradeColumns = null;
-
-    // Absolutes Minimum: nur id
-    const minimalData: Record<string, unknown> = { id: trade.id };
-    const { data: minData, error: minError } = await supabase
-      .from("trades")
-      .insert(minimalData)
-      .select()
-      .single();
-
-    if (minError) {
-      console.error("[Supabase] insertTrade (minimal):", minError.message);
-      return null;
+    // Wenn optionale Spalten fehlen: nochmal ohne sie versuchen
+    if (error.message.includes("column") && error.message.includes("schema cache")) {
+      console.warn("[Supabase] Spalte fehlt, versuche ohne optionale Felder:", error.message);
+      const coreInsert = {
+        id: trade.id,
+        symbol: trade.symbol ?? "",
+        type: trade.type ?? "BUY",
+        entry_price: trade.entry_price ?? 0,
+        stop_loss: trade.stop_loss ?? 0,
+        take_profit: trade.take_profit ?? 0,
+        strength: trade.strength ?? 0,
+        timeframe: trade.timeframe ?? "15m",
+        status: trade.status ?? "ACTIVE",
+      };
+      const { data: coreData, error: coreError } = await supabase
+        .from("trades")
+        .insert(coreInsert)
+        .select()
+        .single();
+      if (coreError) {
+        console.error("[Supabase] insertTrade (core):", coreError.message);
+        return null;
+      }
+      return coreData;
     }
-    return minData;
-  }
-
-  // Schema-Cache aktualisieren
-  if (data && !knownTradeColumns) {
-    knownTradeColumns = new Set(Object.keys(data));
+    console.error("[Supabase] insertTrade:", error.message);
+    return null;
   }
 
   return data;
