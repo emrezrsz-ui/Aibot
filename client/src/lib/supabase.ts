@@ -2,17 +2,17 @@
  * Supabase Client — Crypto Signal Dashboard
  * ==========================================
  * Verbindung zur Supabase-Datenbank.
- * Umgebungsvariablen werden aus .env gelesen:
- *   VITE_SUPABASE_URL   = https://xxx.supabase.co
+ * Umgebungsvariablen:
+ *   VITE_SUPABASE_URL      = https://xxx.supabase.co
  *   VITE_SUPABASE_ANON_KEY = eyJ...
  *
- * Robuste Implementierung: Erkennt automatisch welche Spalten
- * vorhanden sind und arbeitet mit dem vorhandenen Schema.
+ * Schema-Validierung: Beim ersten Zugriff wird geprüft ob alle
+ * benötigten Spalten vorhanden sind. Wenn nicht → lokaler Modus.
  */
 
 import { createClient } from "@supabase/supabase-js";
 
-// ─── Typen für die Datenbank-Tabellen ────────────────────────────────────────
+// ─── Typen ────────────────────────────────────────────────────────────────────
 
 export interface DbTrade {
   id: string;
@@ -29,7 +29,6 @@ export interface DbTrade {
   opened_at?: string | null;
   closed_at?: string | null;
   created_at?: string;
-  // Flexibles Schema — weitere Spalten möglich
   [key: string]: unknown;
 }
 
@@ -49,7 +48,7 @@ export interface DbSetting {
   updated_at?: string;
 }
 
-// ─── Supabase-Client initialisieren ──────────────────────────────────────────
+// ─── Client ───────────────────────────────────────────────────────────────────
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -71,58 +70,69 @@ if (!isSupabaseConfigured) {
   console.info("[Supabase] Nicht konfiguriert — App läuft im lokalen Modus.");
 }
 
-// ─── Schema-Cache: Bekannte Spalten der trades-Tabelle ───────────────────────
-// Wird beim ersten erfolgreichen Query automatisch befüllt
+// ─── Schema-Validierung ───────────────────────────────────────────────────────
+// Prüft einmalig ob die Tabelle alle nötigen Spalten hat.
+// Wenn nicht → schreibt ins Log und deaktiviert Inserts.
 
-let knownTradeColumns: Set<string> | null = null;
+const REQUIRED_COLUMNS = ["id", "symbol", "type", "entry_price", "stop_loss", "take_profit", "timeframe", "status"];
+let schemaValid: boolean | null = null; // null = noch nicht geprüft
+let availableColumns: Set<string> = new Set();
 
-async function getKnownColumns(): Promise<Set<string>> {
-  if (knownTradeColumns) return knownTradeColumns;
-  if (!supabase) return new Set();
+async function validateSchema(): Promise<boolean> {
+  if (schemaValid !== null) return schemaValid;
+  if (!supabase) { schemaValid = false; return false; }
 
   try {
-    // Hole eine leere Antwort um die Spalten aus dem Schema zu ermitteln
-    const { data, error } = await supabase
+    // Teste einen Insert mit einem Dummy-Datensatz und rollback via RPC
+    // Alternativ: Versuche einen SELECT mit allen Spalten
+    const { error } = await supabase
       .from("trades")
-      .select("*")
-      .limit(1);
+      .select("id,symbol,type,entry_price,stop_loss,take_profit,strength,timeframe,status")
+      .limit(0);
 
-    if (!error && data !== null) {
-      if (data.length > 0) {
-        knownTradeColumns = new Set(Object.keys(data[0]));
+    if (error) {
+      // Schema unvollständig — finde heraus welche Spalten vorhanden sind
+      console.warn("[Supabase] Schema unvollständig:", error.message);
+      console.warn("[Supabase] Bitte führe Migration 004 im Supabase SQL Editor aus:");
+      console.warn("[Supabase] supabase/migrations/004_recreate_trades_table.sql");
+
+      // Versuche mit Basis-Spalten
+      const { error: e2 } = await supabase
+        .from("trades")
+        .select("id,symbol,type,status")
+        .limit(0);
+
+      if (e2) {
+        // Nur id vorhanden
+        availableColumns = new Set(["id", "created_at"]);
+        schemaValid = false;
       } else {
-        // Tabelle leer — versuche via Insert-Fehler zu erkennen
-        // Nutze einen bekannten Basis-Satz
-        knownTradeColumns = new Set(["id", "created_at"]);
+        availableColumns = new Set(["id", "symbol", "type", "status", "created_at"]);
+        schemaValid = false; // Immer noch nicht vollständig
       }
+      return false;
     }
+
+    // Alle Spalten vorhanden
+    availableColumns = new Set([...REQUIRED_COLUMNS, "strength", "close_reason", "close_price", "opened_at", "closed_at", "created_at"]);
+    schemaValid = true;
+    console.info("[Supabase] Schema validiert — alle Spalten vorhanden ✓");
+    return true;
   } catch {
-    knownTradeColumns = new Set(["id", "created_at"]);
+    schemaValid = false;
+    return false;
   }
-
-  return knownTradeColumns ?? new Set(["id", "created_at"]);
 }
 
-/** Filtert ein Objekt auf nur bekannte Spalten */
-function filterToKnownColumns(
-  data: Record<string, unknown>,
-  known: Set<string>
-): Record<string, unknown> {
-  if (known.size <= 2) return data; // Wenn wir die Spalten nicht kennen, alles versuchen
-  const filtered: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (known.has(key) && value !== undefined) {
-      filtered[key] = value;
-    }
-  }
-  return filtered;
-}
-
-// ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
+// ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
 
 /** Alle aktiven Trades aus der Datenbank laden */
 export async function loadActiveTrades(): Promise<DbTrade[]> {
   if (!supabase) return [];
+
+  // Schema validieren
+  await validateSchema();
+
   const { data, error } = await supabase
     .from("trades")
     .select("*")
@@ -133,33 +143,29 @@ export async function loadActiveTrades(): Promise<DbTrade[]> {
     console.error("[Supabase] loadActiveTrades:", error.message);
     return [];
   }
-
-  // Schema-Cache befüllen
-  if (data && data.length > 0 && !knownTradeColumns) {
-    knownTradeColumns = new Set(Object.keys(data[0]));
-    console.log("[Supabase] Bekannte Spalten:", Array.from(knownTradeColumns).join(", "));
-  }
-
-  return data || [];
+  return (data as unknown as DbTrade[]) || [];
 }
 
-/** Trade-History für ein Symbol laden (letzte 20) */
+/** Trade-History für ein Symbol laden */
 export async function loadTradeHistory(symbol: string, timeframe?: string): Promise<DbTrade[]> {
   if (!supabase) return [];
+
+  await validateSchema();
+
+  if (!schemaValid && availableColumns.size <= 2) {
+    // Schema zu unvollständig für sinnvolle Queries
+    return [];
+  }
 
   let query = supabase
     .from("trades")
     .select("*")
     .eq("status", "CLOSED")
+    .eq("symbol", symbol)
     .order("created_at", { ascending: false })
     .limit(20);
 
-  // Nur filtern wenn die Spalte bekannt ist
-  const cols = knownTradeColumns;
-  if (!cols || cols.has("symbol")) {
-    query = query.eq("symbol", symbol);
-  }
-  if (timeframe && (!cols || cols.has("timeframe"))) {
+  if (timeframe) {
     query = query.eq("timeframe", timeframe);
   }
 
@@ -168,15 +174,24 @@ export async function loadTradeHistory(symbol: string, timeframe?: string): Prom
     console.error("[Supabase] loadTradeHistory:", error.message);
     return [];
   }
-  return data || [];
+  return (data as unknown as DbTrade[]) || [];
 }
 
 /** Neuen Trade in die Datenbank einfügen */
 export async function insertTrade(trade: Omit<DbTrade, "created_at">): Promise<DbTrade | null> {
   if (!supabase) return null;
 
-  // Vollständiger Insert mit allen Pflichtfeldern
-  const fullInsert: Record<string, unknown> = {
+  // Schema validieren
+  const valid = await validateSchema();
+
+  if (!valid) {
+    // Schema unvollständig — nicht versuchen zu inserieren
+    console.warn("[Supabase] insertTrade übersprungen — Schema unvollständig. Bitte Migration 004 ausführen.");
+    return null;
+  }
+
+  // Vollständiger Insert
+  const insertData: Record<string, unknown> = {
     id: trade.id,
     symbol: trade.symbol ?? "",
     type: trade.type ?? "BUY",
@@ -188,135 +203,87 @@ export async function insertTrade(trade: Omit<DbTrade, "created_at">): Promise<D
     status: trade.status ?? "ACTIVE",
   };
 
-  // Optionale Felder nur wenn vorhanden
-  if (trade.close_reason != null) fullInsert.close_reason = trade.close_reason;
-  if (trade.close_price != null) fullInsert.close_price = trade.close_price;
-  if (trade.opened_at != null) fullInsert.opened_at = trade.opened_at;
-  if (trade.closed_at != null) fullInsert.closed_at = trade.closed_at;
+  if (trade.close_reason != null) insertData.close_reason = trade.close_reason;
+  if (trade.close_price != null) insertData.close_price = trade.close_price;
+  if (trade.opened_at != null) insertData.opened_at = trade.opened_at;
+  if (trade.closed_at != null) insertData.closed_at = trade.closed_at;
 
   const { data, error } = await supabase
     .from("trades")
-    .insert(fullInsert)
+    .insert(insertData)
     .select()
     .single();
 
   if (error) {
-    // Wenn Spalte fehlt: schrittweise Felder entfernen bis Insert klappt
-    if (error.message.includes("schema cache") || error.message.includes("column")) {
-      console.warn("[Supabase] Spalte fehlt, versuche Minimal-Insert:", error.message);
-
-      // Stufe 2: ohne strength und optionale Felder
-      const insert2 = {
-        id: trade.id,
-        symbol: trade.symbol ?? "",
-        type: trade.type ?? "BUY",
-        entry_price: trade.entry_price ?? 0,
-        stop_loss: trade.stop_loss ?? 0,
-        take_profit: trade.take_profit ?? 0,
-        timeframe: trade.timeframe ?? "15m",
-        status: trade.status ?? "ACTIVE",
-      };
-      const { data: d2, error: e2 } = await supabase.from("trades").insert(insert2).select().single();
-      if (!e2) return d2;
-
-      // Stufe 3: nur absolut notwendige Felder
-      const insert3 = {
-        id: trade.id,
-        symbol: trade.symbol ?? "",
-        type: trade.type ?? "BUY",
-        status: trade.status ?? "ACTIVE",
-      };
-      const { data: d3, error: e3 } = await supabase.from("trades").insert(insert3).select().single();
-      if (!e3) return d3;
-
-      console.error("[Supabase] insertTrade (alle Stufen fehlgeschlagen):", e3.message);
-      return null;
-    }
     console.error("[Supabase] insertTrade:", error.message);
+    // Schema-Validierung zurücksetzen damit beim nächsten Versuch neu geprüft wird
+    schemaValid = null;
     return null;
   }
 
-  return data;
+  return data as DbTrade;
 }
 
 /** Trade aktualisieren (z.B. beim Schließen) */
 export async function updateTrade(
   id: string,
   updates: Partial<DbTrade>
-): Promise<boolean> {
-  if (!supabase) return false;
+): Promise<DbTrade | null> {
+  if (!supabase) return null;
 
-  const known = await getKnownColumns();
+  const valid = await validateSchema();
+  if (!valid) return null;
 
-  // Undefined-Werte entfernen
-  const allUpdates: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(updates)) {
-    if (value !== undefined) allUpdates[key] = value;
-  }
-
-  const safeUpdates = filterToKnownColumns(allUpdates, known);
-
-  if (Object.keys(safeUpdates).length === 0) return true;
-
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("trades")
-    .update(safeUpdates)
-    .eq("id", id);
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
 
   if (error) {
-    console.warn("[Supabase] updateTrade:", error.message);
-    // Fallback: nur status aktualisieren
-    const { error: fallbackError } = await supabase
-      .from("trades")
-      .update({ status: updates.status ?? "CLOSED" })
-      .eq("id", id);
-    if (fallbackError) {
-      console.error("[Supabase] updateTrade (fallback):", fallbackError.message);
-      return false;
-    }
+    console.error("[Supabase] updateTrade:", error.message);
+    return null;
   }
-  return true;
+  return data as DbTrade;
 }
 
-/** Stats für ein Symbol/Timeframe aktualisieren (Upsert) */
-export async function upsertStats(stat: DbStat): Promise<boolean> {
-  if (!supabase) return false;
+/** Stats aktualisieren */
+export async function upsertStat(stat: DbStat): Promise<void> {
+  if (!supabase) return;
+
   const { error } = await supabase
     .from("stats")
-    .upsert(
-      { ...stat, updated_at: new Date().toISOString() },
-      { onConflict: "symbol,timeframe" }
-    );
-  if (error) { console.error("[Supabase] upsertStats:", error.message); return false; }
-  return true;
+    .upsert(stat, { onConflict: "symbol,timeframe" });
+
+  if (error) {
+    console.error("[Supabase] upsertStat:", error.message);
+  }
 }
 
-/** Stats für alle Symbole laden */
-export async function loadStats(): Promise<DbStat[]> {
-  if (!supabase) return [];
-  const { data, error } = await supabase.from("stats").select("*");
-  if (error) { console.error("[Supabase] loadStats:", error.message); return []; }
-  return data || [];
-}
-
-/** Einstellung lesen */
+/** Setting laden */
 export async function getSetting(key: string): Promise<string | null> {
   if (!supabase) return null;
+
   const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", key)
     .single();
+
   if (error) return null;
-  return data?.value ?? null;
+  return (data as DbSetting)?.value ?? null;
 }
 
-/** Einstellung speichern (Upsert) */
-export async function setSetting(key: string, value: string): Promise<boolean> {
-  if (!supabase) return false;
+/** Setting speichern */
+export async function setSetting(key: string, value: string): Promise<void> {
+  if (!supabase) return;
+
   const { error } = await supabase
     .from("settings")
     .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
-  if (error) { console.error("[Supabase] setSetting:", error.message); return false; }
-  return true;
+
+  if (error) {
+    console.error("[Supabase] setSetting:", error.message);
+  }
 }

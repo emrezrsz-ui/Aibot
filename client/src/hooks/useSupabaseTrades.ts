@@ -19,7 +19,7 @@ import {
   updateTrade,
   loadActiveTrades,
   loadTradeHistory,
-  upsertStats,
+  upsertStat,
 } from "@/lib/supabase";
 import {
   CoinTradingState,
@@ -253,7 +253,7 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
                   closed_at: new Date().toISOString(),
                 }).then(() => {
                   // Stats aktualisieren
-                  upsertStats({
+                  upsertStat({
                     symbol,
                     timeframe: closedTrade.timeframe,
                     total_trades: newHistory.filter(t => t.status === "CLOSED").length,
