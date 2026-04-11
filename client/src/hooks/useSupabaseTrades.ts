@@ -57,17 +57,17 @@ function tradeToDbTrade(trade: Trade): DbTrade {
 function dbTradeToTrade(db: DbTrade): Trade {
   return {
     id: db.id,
-    symbol: db.symbol,
-    type: db.type,
-    entryPrice: db.entry_price,
-    stopLoss: db.stop_loss,
-    takeProfit: db.take_profit,
-    strength: db.strength,
-    timeframe: db.timeframe,
-    status: db.status,
+    symbol: (db.symbol as string) ?? "",
+    type: (db.type as "BUY" | "SELL") ?? "BUY",
+    entryPrice: (db.entry_price as number) ?? 0,
+    stopLoss: (db.stop_loss as number) ?? 0,
+    takeProfit: (db.take_profit as number) ?? 0,
+    strength: (db.strength as number) ?? 0,
+    timeframe: (db.timeframe as string) ?? "15m",
+    status: (db.status as "ACTIVE" | "CLOSED") ?? "ACTIVE",
     closeReason: db.close_reason ?? undefined,
     closePrice: db.close_price ?? undefined,
-    timestamp: db.opened_at ? new Date(db.opened_at).getTime() : (db.created_at ? new Date(db.created_at).getTime() : Date.now()),
+    timestamp: db.opened_at ? new Date(db.opened_at as string).getTime() : (db.created_at ? new Date(db.created_at).getTime() : Date.now()),
   };
 }
 

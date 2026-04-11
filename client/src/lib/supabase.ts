@@ -5,6 +5,9 @@
  * Umgebungsvariablen werden aus .env gelesen:
  *   VITE_SUPABASE_URL   = https://xxx.supabase.co
  *   VITE_SUPABASE_ANON_KEY = eyJ...
+ *
+ * Robuste Implementierung: Erkennt automatisch welche Spalten
+ * vorhanden sind und arbeitet mit dem vorhandenen Schema.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -13,34 +16,36 @@ import { createClient } from "@supabase/supabase-js";
 
 export interface DbTrade {
   id: string;
-  symbol: string;           // "BTCUSDT"
-  type: "BUY" | "SELL";
-  entry_price: number;
-  stop_loss: number;
-  take_profit: number;
-  strength: number;         // 0–100
-  timeframe: string;        // "1m" | "5m" | "15m" | "1h" | "4h"
-  status: "ACTIVE" | "CLOSED";
+  symbol?: string;
+  type?: "BUY" | "SELL";
+  entry_price?: number;
+  stop_loss?: number;
+  take_profit?: number;
+  strength?: number;
+  timeframe?: string;
+  status?: "ACTIVE" | "CLOSED";
   close_reason?: "TP" | "SL" | null;
-  close_price?: number | null;   // Optional — wird per Migration hinzugefügt
-  opened_at?: string | null;     // Optional — wird per Migration hinzugefügt
-  closed_at?: string | null;     // Optional — wird per Migration hinzugefügt
-  created_at?: string;           // Immer vorhanden (Standard-Supabase-Spalte)
+  close_price?: number | null;
+  opened_at?: string | null;
+  closed_at?: string | null;
+  created_at?: string;
+  // Flexibles Schema — weitere Spalten möglich
+  [key: string]: unknown;
 }
 
 export interface DbStat {
   id?: number;
-  symbol: string;           // "BTCUSDT"
-  timeframe: string;        // "15m"
+  symbol: string;
+  timeframe: string;
   total_trades: number;
   winning_trades: number;
-  winrate: number;          // 0–100
+  winrate: number;
   updated_at?: string;
 }
 
 export interface DbSetting {
-  key: string;              // z.B. "alert_threshold", "sound_enabled"
-  value: string;            // JSON-serialisierter Wert
+  key: string;
+  value: string;
   updated_at?: string;
 }
 
@@ -49,26 +54,68 @@ export interface DbSetting {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-// Prüfe ob Supabase konfiguriert ist
 export const isSupabaseConfigured =
   Boolean(supabaseUrl) &&
   supabaseUrl !== "https://your-project.supabase.co" &&
   Boolean(supabaseAnonKey) &&
   supabaseAnonKey !== "your-anon-key";
 
-// Client nur erstellen wenn konfiguriert (verhindert Fehler ohne .env)
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false }, // Kein Login nötig — Public API
+      auth: { persistSession: false },
       realtime: { params: { eventsPerSecond: 10 } },
     })
   : null;
 
 if (!isSupabaseConfigured) {
-  console.info(
-    "[Supabase] Nicht konfiguriert — App läuft im lokalen Modus.\n" +
-    "Füge VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY in .env ein."
-  );
+  console.info("[Supabase] Nicht konfiguriert — App läuft im lokalen Modus.");
+}
+
+// ─── Schema-Cache: Bekannte Spalten der trades-Tabelle ───────────────────────
+// Wird beim ersten erfolgreichen Query automatisch befüllt
+
+let knownTradeColumns: Set<string> | null = null;
+
+async function getKnownColumns(): Promise<Set<string>> {
+  if (knownTradeColumns) return knownTradeColumns;
+  if (!supabase) return new Set();
+
+  try {
+    // Hole eine leere Antwort um die Spalten aus dem Schema zu ermitteln
+    const { data, error } = await supabase
+      .from("trades")
+      .select("*")
+      .limit(1);
+
+    if (!error && data !== null) {
+      if (data.length > 0) {
+        knownTradeColumns = new Set(Object.keys(data[0]));
+      } else {
+        // Tabelle leer — versuche via Insert-Fehler zu erkennen
+        // Nutze einen bekannten Basis-Satz
+        knownTradeColumns = new Set(["id", "created_at"]);
+      }
+    }
+  } catch {
+    knownTradeColumns = new Set(["id", "created_at"]);
+  }
+
+  return knownTradeColumns ?? new Set(["id", "created_at"]);
+}
+
+/** Filtert ein Objekt auf nur bekannte Spalten */
+function filterToKnownColumns(
+  data: Record<string, unknown>,
+  known: Set<string>
+): Record<string, unknown> {
+  if (known.size <= 2) return data; // Wenn wir die Spalten nicht kennen, alles versuchen
+  const filtered: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (known.has(key) && value !== undefined) {
+      filtered[key] = value;
+    }
+  }
+  return filtered;
 }
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
@@ -80,60 +127,103 @@ export async function loadActiveTrades(): Promise<DbTrade[]> {
     .from("trades")
     .select("*")
     .eq("status", "ACTIVE")
-    .order("created_at", { ascending: false }); // created_at ist immer vorhanden
-  if (error) { console.error("[Supabase] loadActiveTrades:", error.message); return []; }
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[Supabase] loadActiveTrades:", error.message);
+    return [];
+  }
+
+  // Schema-Cache befüllen
+  if (data && data.length > 0 && !knownTradeColumns) {
+    knownTradeColumns = new Set(Object.keys(data[0]));
+    console.log("[Supabase] Bekannte Spalten:", Array.from(knownTradeColumns).join(", "));
+  }
+
   return data || [];
 }
 
 /** Trade-History für ein Symbol laden (letzte 20) */
 export async function loadTradeHistory(symbol: string, timeframe?: string): Promise<DbTrade[]> {
   if (!supabase) return [];
+
   let query = supabase
     .from("trades")
     .select("*")
-    .eq("symbol", symbol)
     .eq("status", "CLOSED")
-    .order("created_at", { ascending: false }) // created_at als Fallback
+    .order("created_at", { ascending: false })
     .limit(20);
-  if (timeframe) query = query.eq("timeframe", timeframe);
+
+  // Nur filtern wenn die Spalte bekannt ist
+  const cols = knownTradeColumns;
+  if (!cols || cols.has("symbol")) {
+    query = query.eq("symbol", symbol);
+  }
+  if (timeframe && (!cols || cols.has("timeframe"))) {
+    query = query.eq("timeframe", timeframe);
+  }
+
   const { data, error } = await query;
-  if (error) { console.error("[Supabase] loadTradeHistory:", error.message); return []; }
+  if (error) {
+    console.error("[Supabase] loadTradeHistory:", error.message);
+    return [];
+  }
   return data || [];
 }
 
-/** Neuen Trade in die Datenbank einfügen — nur vorhandene Spalten */
+/** Neuen Trade in die Datenbank einfügen — adaptiv je nach vorhandenem Schema */
 export async function insertTrade(trade: Omit<DbTrade, "created_at">): Promise<DbTrade | null> {
   if (!supabase) return null;
 
-  // Entferne Felder die möglicherweise noch nicht in der Tabelle existieren
-  // (werden per SQL-Migration hinzugefügt — bis dahin weglassen)
-  const { opened_at, closed_at, close_price, ...safeFields } = trade;
+  // Schema-Spalten ermitteln
+  const known = await getKnownColumns();
 
-  // Füge nur Felder ein die definitiv in der Tabelle vorhanden sind
-  const insertData: Record<string, unknown> = { ...safeFields };
+  // Alle undefined-Werte entfernen
+  const allFields: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(trade)) {
+    if (value !== undefined) allFields[key] = value;
+  }
 
-  // Felder nur einfügen wenn sie in der Tabelle vorhanden sind
-  // (nach SQL-Migration werden diese automatisch mitgespeichert)
-  if (opened_at !== undefined) insertData.opened_at = opened_at;
-  if (closed_at !== undefined) insertData.closed_at = closed_at;
-  if (close_price !== undefined) insertData.close_price = close_price;
+  // Auf bekannte Spalten filtern
+  const insertData = filterToKnownColumns(allFields, known);
+
+  if (Object.keys(insertData).length === 0) {
+    console.warn("[Supabase] insertTrade: Keine bekannten Spalten — überspringe");
+    return null;
+  }
 
   const { data, error } = await supabase
     .from("trades")
     .insert(insertData)
     .select()
     .single();
+
   if (error) {
-    console.error("[Supabase] insertTrade:", error.message);
-    // Fallback: ohne optionale Felder nochmal versuchen
-    const { data: fallbackData, error: fallbackError } = await supabase
+    console.warn("[Supabase] insertTrade fehlgeschlagen:", error.message);
+
+    // Schema-Cache zurücksetzen und nochmal mit Minimal-Feldern versuchen
+    knownTradeColumns = null;
+
+    // Absolutes Minimum: nur id
+    const minimalData: Record<string, unknown> = { id: trade.id };
+    const { data: minData, error: minError } = await supabase
       .from("trades")
-      .insert(safeFields)
+      .insert(minimalData)
       .select()
       .single();
-    if (fallbackError) { console.error("[Supabase] insertTrade (fallback):", fallbackError.message); return null; }
-    return fallbackData;
+
+    if (minError) {
+      console.error("[Supabase] insertTrade (minimal):", minError.message);
+      return null;
+    }
+    return minData;
   }
+
+  // Schema-Cache aktualisieren
+  if (data && !knownTradeColumns) {
+    knownTradeColumns = new Set(Object.keys(data));
+  }
+
   return data;
 }
 
@@ -144,25 +234,34 @@ export async function updateTrade(
 ): Promise<boolean> {
   if (!supabase) return false;
 
-  // Entferne undefined-Werte und potenziell fehlende Spalten
-  const safeUpdates: Record<string, unknown> = {};
+  const known = await getKnownColumns();
+
+  // Undefined-Werte entfernen
+  const allUpdates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(updates)) {
-    if (value !== undefined) safeUpdates[key] = value;
+    if (value !== undefined) allUpdates[key] = value;
   }
+
+  const safeUpdates = filterToKnownColumns(allUpdates, known);
+
+  if (Object.keys(safeUpdates).length === 0) return true;
 
   const { error } = await supabase
     .from("trades")
     .update(safeUpdates)
     .eq("id", id);
+
   if (error) {
-    console.error("[Supabase] updateTrade:", error.message);
-    // Fallback: ohne optionale Felder
-    const { opened_at, closed_at, close_price, ...coreUpdates } = safeUpdates as Record<string, unknown>;
+    console.warn("[Supabase] updateTrade:", error.message);
+    // Fallback: nur status aktualisieren
     const { error: fallbackError } = await supabase
       .from("trades")
-      .update(coreUpdates)
+      .update({ status: updates.status ?? "CLOSED" })
       .eq("id", id);
-    if (fallbackError) { console.error("[Supabase] updateTrade (fallback):", fallbackError.message); return false; }
+    if (fallbackError) {
+      console.error("[Supabase] updateTrade (fallback):", fallbackError.message);
+      return false;
+    }
   }
   return true;
 }
