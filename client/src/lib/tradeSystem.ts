@@ -92,7 +92,7 @@ export function createTrade(
   }
 
   return {
-    id: `${symbol}-${Date.now()}`,
+    id: crypto.randomUUID(),
     symbol,
     type,
     entryPrice: currentPrice,
