@@ -252,12 +252,29 @@ export async function updateTrade(
 export async function upsertStat(stat: DbStat): Promise<void> {
   if (!supabase) return;
 
-  const { error } = await supabase
-    .from("stats")
-    .upsert(stat, { onConflict: "symbol,timeframe" });
+  try {
+    // Versuche zuerst mit allen Feldern
+    const { error } = await supabase
+      .from("stats")
+      .upsert(
+        {
+          symbol: stat.symbol,
+          timeframe: stat.timeframe,
+          total_trades: stat.total_trades,
+          winning_trades: stat.winning_trades,
+          winrate: stat.winrate,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "symbol,timeframe" }
+      );
 
-  if (error) {
-    console.error("[Supabase] upsertStat:", error.message);
+    if (error) {
+      // Stats-Tabelle fehlt oder hat falsches Schema — still ignorieren
+      // Die App funktioniert auch ohne Stats-Persistenz
+      console.warn("[Supabase] upsertStat fehlgeschlagen (Stats-Tabelle prüfen):", error.message);
+    }
+  } catch (err) {
+    console.warn("[Supabase] upsertStat Exception:", err);
   }
 }
 

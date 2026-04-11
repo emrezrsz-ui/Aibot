@@ -1,0 +1,22 @@
+# Crypto Signal Dashboard — TODO
+
+- [x] Dark mode UI mit Neon-Trading-Terminal Design
+- [x] Binance WebSocket Echtzeit-Preise (BTC, ETH, SOL, XRP)
+- [x] RSI/EMA Signal-Berechnung
+- [x] Signal-Stärke-Filter: nur ≥70% anzeigen
+- [x] Push-Benachrichtigungen bei ≥80% Stärke
+- [x] Soft-Chime Sound-Alert (Web Audio API)
+- [x] iOS PWA Manifest und Service Worker
+- [x] Trade-Karte: TRADE ACTIVE Badge, Entry-Preis, SL/TP mit Live-%-Abstand
+- [x] Hard-Lock: kein neues Signal während Trade ACTIVE
+- [x] Trade-History pro Coin und Timeframe (letzte 5 Trades)
+- [x] Signal-Zähler: zählt aktiven Trade-Typ statt rohes Markt-Signal
+- [x] Supabase-Client mit Schema-Validierung und 3-stufigem Fallback
+- [x] UUID-basierte Trade-IDs (crypto.randomUUID())
+- [x] GitHub Actions Cron-Job (alle 5 Minuten)
+- [x] scanner-backend/ Express-Server mit Keep-Alive
+- [x] SETUP_GUIDE.md und DEPLOYMENT.md
+- [x] SQL-Migrations-Dateien 001–004
+- [x] upsertStat: Fehler still schlucken wenn stats-Tabelle unvollständig
+- [ ] Supabase stats-Tabelle Migration ausführen (Benutzeraktion erforderlich)
+- [ ] Supabase trades-Tabelle Migration 004 ausführen (Benutzeraktion erforderlich)
