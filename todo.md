@@ -30,3 +30,6 @@
 - [x] tRPC-Router: getSignals Query (letzte Scanner-Signale laden)
 - [x] UI: ScannerSignals Komponente mit Aktions-Buttons (Ausführen / Ignorieren)
 - [x] UI: Signal-Status-Badge (PENDING / EXECUTED / IGNORED) in der Signalliste
+- [x] ScannerSignals-Komponente von Home.tsx entfernen
+- [x] Neue Seite Signals.tsx erstellen mit ScannerSignals-Komponente
+- [x] Navigation in App.tsx: Link zu Signals-Seite hinzufügen

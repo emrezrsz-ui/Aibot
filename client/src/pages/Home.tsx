@@ -12,9 +12,10 @@ import { SignalBadge } from "@/components/SignalBadge";
 import { TradeHistory } from "@/components/TradeHistory";
 import { MarketDataCard } from "@/components/MarketDataCard";
 import { AICommandCenter } from "@/components/AICommandCenter";
-import { ScannerSignals } from "@/components/ScannerSignals";
+
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw, Clock, Bell, BellOff, X, Database, HardDrive } from "lucide-react";
+import { AlertCircle, RefreshCw, Clock, Bell, BellOff, X, Database, HardDrive, Zap } from "lucide-react";
+import { Link } from "wouter";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
@@ -260,6 +261,13 @@ export default function Home() {
                   </button>
                 )}
 
+                <Link href="/signals">
+                  <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold gap-2 text-xs md:text-sm h-8 px-3">
+                    <Zap className="w-3 h-3 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Signale</span>
+                  </Button>
+                </Link>
+
                 <Button
                   onClick={refetch}
                   disabled={loading}
@@ -338,11 +346,6 @@ export default function Home() {
           {/* AI Command Center */}
           <div className="mb-12 p-6 bg-gray-900/50 border border-cyan-400/20 rounded-lg">
             <AICommandCenter />
-          </div>
-
-          {/* Scanner-Signale: Manuelle Verwaltung */}
-          <div className="mb-12">
-            <ScannerSignals />
           </div>
 
           {/* Signals Grid */}
