@@ -77,8 +77,8 @@ export default function Home() {
           );
         }
 
-        // Benachrichtigung für starke Signale (>75%)
-        if (signal.strength >= 75) {
+        // Benachrichtigung für sehr starke Signale (>=80%)
+        if (signal.strength >= 80) {
           const notifKey = `${signal.symbol}-${signal.signal}-${selectedInterval}-${Math.floor(Date.now() / 120000)}`;
           if (!notifiedRef.current.has(notifKey)) {
             notifiedRef.current.add(notifKey);
@@ -164,7 +164,7 @@ export default function Home() {
                   Push-Benachrichtigungen aktivieren?
                 </p>
                 <p className="text-cyan-400/70 font-mono text-xs mt-0.5">
-                  Erhalte sofortige Alerts für starke Signale (&gt;75% Stärke) — auch wenn das Tab im Hintergrund ist.
+                  Erhalte sofortige Alerts für sehr starke Signale (&gt;80% Stärke) — auch wenn das Tab im Hintergrund ist.
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
@@ -346,7 +346,7 @@ export default function Home() {
                 ▸ TRADING-SIGNALE
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {signals.map((signal) => {
+                {signals.filter((signal) => signal.strength >= 70).map((signal) => {
                   const activeTrade = tradingState[signal.symbol]?.activeTrade;
                   return (
                     <div key={signal.symbol}>

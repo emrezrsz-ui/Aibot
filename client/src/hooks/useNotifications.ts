@@ -163,10 +163,10 @@ export function useNotifications() {
     [permission, swRegistration]
   );
 
-  // Prüfe ob ein Signal stark genug ist (>75%)
+  // Prüfe ob ein Signal stark genug ist (>=80%)
   const checkAndNotify = useCallback(
     (notification: SignalNotification) => {
-      if (notification.strength >= 75) {
+      if (notification.strength >= 80) {
         sendNotification(notification);
       }
     },
