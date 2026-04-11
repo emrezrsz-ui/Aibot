@@ -22,10 +22,10 @@ export interface DbTrade {
   timeframe: string;        // "1m" | "5m" | "15m" | "1h" | "4h"
   status: "ACTIVE" | "CLOSED";
   close_reason?: "TP" | "SL" | null;
-  close_price?: number | null;
-  opened_at: string;        // ISO timestamp
-  closed_at?: string | null;
-  created_at?: string;
+  close_price?: number | null;   // Optional — wird per Migration hinzugefügt
+  opened_at?: string | null;     // Optional — wird per Migration hinzugefügt
+  closed_at?: string | null;     // Optional — wird per Migration hinzugefügt
+  created_at?: string;           // Immer vorhanden (Standard-Supabase-Spalte)
 }
 
 export interface DbStat {
@@ -80,7 +80,7 @@ export async function loadActiveTrades(): Promise<DbTrade[]> {
     .from("trades")
     .select("*")
     .eq("status", "ACTIVE")
-    .order("opened_at", { ascending: false });
+    .order("created_at", { ascending: false }); // created_at ist immer vorhanden
   if (error) { console.error("[Supabase] loadActiveTrades:", error.message); return []; }
   return data || [];
 }
@@ -93,7 +93,7 @@ export async function loadTradeHistory(symbol: string, timeframe?: string): Prom
     .select("*")
     .eq("symbol", symbol)
     .eq("status", "CLOSED")
-    .order("closed_at", { ascending: false })
+    .order("created_at", { ascending: false }) // created_at als Fallback
     .limit(20);
   if (timeframe) query = query.eq("timeframe", timeframe);
   const { data, error } = await query;
@@ -101,15 +101,39 @@ export async function loadTradeHistory(symbol: string, timeframe?: string): Prom
   return data || [];
 }
 
-/** Neuen Trade in die Datenbank einfügen */
+/** Neuen Trade in die Datenbank einfügen — nur vorhandene Spalten */
 export async function insertTrade(trade: Omit<DbTrade, "created_at">): Promise<DbTrade | null> {
   if (!supabase) return null;
+
+  // Entferne Felder die möglicherweise noch nicht in der Tabelle existieren
+  // (werden per SQL-Migration hinzugefügt — bis dahin weglassen)
+  const { opened_at, closed_at, close_price, ...safeFields } = trade;
+
+  // Füge nur Felder ein die definitiv in der Tabelle vorhanden sind
+  const insertData: Record<string, unknown> = { ...safeFields };
+
+  // Felder nur einfügen wenn sie in der Tabelle vorhanden sind
+  // (nach SQL-Migration werden diese automatisch mitgespeichert)
+  if (opened_at !== undefined) insertData.opened_at = opened_at;
+  if (closed_at !== undefined) insertData.closed_at = closed_at;
+  if (close_price !== undefined) insertData.close_price = close_price;
+
   const { data, error } = await supabase
     .from("trades")
-    .insert(trade)
+    .insert(insertData)
     .select()
     .single();
-  if (error) { console.error("[Supabase] insertTrade:", error.message); return null; }
+  if (error) {
+    console.error("[Supabase] insertTrade:", error.message);
+    // Fallback: ohne optionale Felder nochmal versuchen
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("trades")
+      .insert(safeFields)
+      .select()
+      .single();
+    if (fallbackError) { console.error("[Supabase] insertTrade (fallback):", fallbackError.message); return null; }
+    return fallbackData;
+  }
   return data;
 }
 
@@ -119,11 +143,27 @@ export async function updateTrade(
   updates: Partial<DbTrade>
 ): Promise<boolean> {
   if (!supabase) return false;
+
+  // Entferne undefined-Werte und potenziell fehlende Spalten
+  const safeUpdates: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined) safeUpdates[key] = value;
+  }
+
   const { error } = await supabase
     .from("trades")
-    .update(updates)
+    .update(safeUpdates)
     .eq("id", id);
-  if (error) { console.error("[Supabase] updateTrade:", error.message); return false; }
+  if (error) {
+    console.error("[Supabase] updateTrade:", error.message);
+    // Fallback: ohne optionale Felder
+    const { opened_at, closed_at, close_price, ...coreUpdates } = safeUpdates as Record<string, unknown>;
+    const { error: fallbackError } = await supabase
+      .from("trades")
+      .update(coreUpdates)
+      .eq("id", id);
+    if (fallbackError) { console.error("[Supabase] updateTrade (fallback):", fallbackError.message); return false; }
+  }
   return true;
 }
 

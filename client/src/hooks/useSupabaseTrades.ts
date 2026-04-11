@@ -67,7 +67,7 @@ function dbTradeToTrade(db: DbTrade): Trade {
     status: db.status,
     closeReason: db.close_reason ?? undefined,
     closePrice: db.close_price ?? undefined,
-    timestamp: new Date(db.opened_at).getTime(),
+    timestamp: db.opened_at ? new Date(db.opened_at).getTime() : (db.created_at ? new Date(db.created_at).getTime() : Date.now()),
   };
 }
 
