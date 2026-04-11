@@ -33,3 +33,11 @@
 - [x] ScannerSignals-Komponente von Home.tsx entfernen
 - [x] Neue Seite Signals.tsx erstellen mit ScannerSignals-Komponente
 - [x] Navigation in App.tsx: Link zu Signals-Seite hinzufügen
+- [x] Scanner: REST-API durch Binance WebSocket (wss://stream.binance.com) ersetzt
+- [x] Scanner: Kline-WebSocket-Streams für alle Symbole und Intervalle abonniert (8 Streams)
+- [x] Scanner: Lokalen Kerzen-Buffer mit rollierendem Fenster (100 Kerzen) implementiert
+- [x] Scanner: Automatische Reconnect-Logik bei Verbindungsabbruch (exp. Backoff)
+- [x] Scanner: REST-Fallback für initiale Kerzendaten beim Start
+- [x] Scanner: Signal-Berechnung bei jeder neuen Kerze statt alle 5 Minuten
+- [x] Scanner: /health Endpoint um WebSocket-Status erweitert
+- [x] Frontend: Signals-Seite mit Live-WebSocket-Status-Bar

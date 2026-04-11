@@ -298,7 +298,7 @@ export function ScannerSignals() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-8 text-gray-500 font-mono text-sm">
           {filter === "ALL"
-            ? "Noch keine Signale — Scanner läuft alle 5 Minuten"
+            ? "Noch keine Signale — Scanner wartet auf Kerzen-Close via WebSocket"
             : `Keine ${filter === "PENDING" ? "ausstehenden" : filter === "EXECUTED" ? "ausgeführten" : "ignorierten"} Signale`}
         </div>
       ) : (
