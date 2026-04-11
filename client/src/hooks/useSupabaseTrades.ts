@@ -25,10 +25,12 @@ import {
   CoinTradingState,
   Trade,
   calculateWinrate,
+  calculateWinrateByTimeframe,
   checkTradeExit,
   closeTrade,
   createTrade,
   initializeTradingState,
+  updateHistoryByTimeframe,
   updateTradeHistory,
 } from "@/lib/tradeSystem";
 
@@ -151,8 +153,17 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
         symbols.forEach((sym, idx) => {
           const history = historyResults[idx] || [];
           const trades = history.map(dbTradeToTrade);
-          newState[sym].history = trades.slice(0, 5);
+          newState[sym].history = trades;
           newState[sym].winrate = calculateWinrate(trades);
+          // Baue historyByTimeframe aus den geladenen Trades auf
+          const byTf: Record<string, Trade[]> = {};
+          trades.forEach(t => {
+            const tf = t.timeframe;
+            if (!byTf[tf]) byTf[tf] = [];
+            if (byTf[tf].length < 5) byTf[tf].push(t);
+          });
+          newState[sym].historyByTimeframe = byTf;
+          newState[sym].winrateByTimeframe = calculateWinrateByTimeframe(byTf);
         });
 
         setTradingState(newState);
@@ -229,7 +240,9 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
             if (exitReason) {
               const closedTrade = closeTrade(activeTrade, exitReason, currentPrice);
               const newHistory = updateTradeHistory(coinState.history, closedTrade);
+              const newHistoryByTf = updateHistoryByTimeframe(coinState.historyByTimeframe || {}, closedTrade);
               const newWinrate = calculateWinrate(newHistory);
+              const newWinrateByTf = calculateWinrateByTimeframe(newHistoryByTf);
 
               // Asynchron in Supabase aktualisieren
               if (isSupabaseConfigured) {
@@ -255,7 +268,9 @@ export function useSupabaseTrades(marketData: Record<string, number>) {
               updated[symbol] = {
                 activeTrade: null,
                 history: newHistory,
+                historyByTimeframe: newHistoryByTf,
                 winrate: newWinrate,
+                winrateByTimeframe: newWinrateByTf,
               };
               hasChanges = true;
             }

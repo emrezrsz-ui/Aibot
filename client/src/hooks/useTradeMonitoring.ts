@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CoinTradingState,
-  Trade,
   calculateWinrate,
+  calculateWinrateByTimeframe,
   checkTradeExit,
   closeTrade,
   createTrade,
   initializeTradingState,
+  updateHistoryByTimeframe,
   updateTradeHistory,
 } from "@/lib/tradeSystem";
 
@@ -23,7 +24,6 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
   /**
    * Generiere ein neues Signal und erstelle einen Trade
    * HARD-LOCK: Wenn ein Trade ACTIVE ist, wird diese Funktion komplett ignoriert
-   * useCallback mit leerem Array = stabile Referenz, kein Re-Render-Trigger
    */
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const generateSignal = useCallback((
@@ -34,22 +34,17 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
   ) => {
     setTradingState((prev) => {
       const coinState = prev[symbol];
-
       // HARD-LOCK: Wenn bereits ein aktiver Trade existiert, IGNORIERE KOMPLETT
       if (coinState?.activeTrade?.status === "ACTIVE") {
-        console.log(`[HARD-LOCK] ${symbol}: Trade ACTIVE - Signal ${type} BLOCKIERT`);
-        return prev; // Keine Änderungen, State bleibt unverändert
+        return prev;
       }
-
       const currentPrice = marketData[symbol] || 0;
       const newTrade = createTrade(symbol, type, currentPrice, strength, timeframe);
-
       return {
         ...prev,
         [symbol]: {
           ...coinState,
           activeTrade: newTrade,
-          scannerPaused: false,
         },
       };
     });
@@ -65,32 +60,31 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
         let updated = { ...prev };
         let hasChanges = false;
 
-        // Überprüfe jeden aktiven Trade
         Object.keys(updated).forEach((symbol) => {
           const coinState = updated[symbol];
           const activeTrade = coinState?.activeTrade;
 
           if (activeTrade && activeTrade.status === "ACTIVE") {
             const currentPrice = marketData[symbol] || 0;
-
-            // Überprüfe TP/SL
             const exitReason = checkTradeExit(activeTrade, currentPrice);
 
             if (exitReason) {
-              // Trade wurde geschlossen
               const closedTrade = closeTrade(activeTrade, exitReason, currentPrice);
-              const newHistory = updateTradeHistory(
-                coinState.history,
+              const newHistory = updateTradeHistory(coinState.history, closedTrade);
+              const newHistoryByTf = updateHistoryByTimeframe(
+                coinState.historyByTimeframe || {},
                 closedTrade
               );
               const newWinrate = calculateWinrate(newHistory);
+              const newWinrateByTf = calculateWinrateByTimeframe(newHistoryByTf);
 
               updated[symbol] = {
                 activeTrade: null,
                 history: newHistory,
+                historyByTimeframe: newHistoryByTf,
                 winrate: newWinrate,
+                winrateByTimeframe: newWinrateByTf,
               };
-
               hasChanges = true;
             }
           }
@@ -98,7 +92,7 @@ export function useTradeMonitoring(marketData: Record<string, number>) {
 
         return hasChanges ? updated : prev;
       });
-    }, 1000); // Überprüfe jede Sekunde
+    }, 1000);
 
     return () => {
       if (monitoringIntervalRef.current) {

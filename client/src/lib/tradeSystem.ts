@@ -27,8 +27,10 @@ export interface TradeHistory {
 export interface CoinTradingState {
   [symbol: string]: {
     activeTrade: Trade | null;
-    history: Trade[]; // Letzte 5 Trades
+    history: Trade[]; // Alle abgeschlossenen Trades (flach, für Supabase-Sync)
+    historyByTimeframe: Record<string, Trade[]>; // Letzte 5 Trades pro Timeframe
     winrate: number;
+    winrateByTimeframe: Record<string, number>; // Winrate pro Timeframe
   };
 }
 
@@ -160,11 +162,40 @@ export function calculateWinrate(trades: Trade[]): number {
 }
 
 /**
- * Aktualisiere Trade History (behalte nur letzte 5)
+ * Aktualisiere Trade History (flach, alle Timeframes)
  */
 export function updateTradeHistory(history: Trade[], newTrade: Trade): Trade[] {
   const updated = [newTrade, ...history];
-  return updated.slice(0, 5); // Behalte nur letzte 5
+  return updated.slice(0, 50); // Behalte letzte 50 für Supabase-Sync
+}
+
+/**
+ * Aktualisiere Trade History nach Timeframe (behalte nur letzte 5 pro Timeframe)
+ */
+export function updateHistoryByTimeframe(
+  historyByTimeframe: Record<string, Trade[]>,
+  newTrade: Trade
+): Record<string, Trade[]> {
+  const tf = newTrade.timeframe;
+  const existing = historyByTimeframe[tf] || [];
+  const updated = [newTrade, ...existing].slice(0, 5); // Max 5 pro Timeframe
+  return { ...historyByTimeframe, [tf]: updated };
+}
+
+/**
+ * Berechne Winrate pro Timeframe
+ */
+export function calculateWinrateByTimeframe(
+  historyByTimeframe: Record<string, Trade[]>
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  Object.entries(historyByTimeframe).forEach(([tf, trades]) => {
+    const closed = trades.filter(t => t.status === "CLOSED");
+    if (closed.length === 0) { result[tf] = 0; return; }
+    const wins = closed.filter(t => t.closeReason === "TP").length;
+    result[tf] = Math.round((wins / closed.length) * 100);
+  });
+  return result;
 }
 
 /**
@@ -178,7 +209,9 @@ export function initializeTradingState(): CoinTradingState {
     state[symbol] = {
       activeTrade: null,
       history: [],
+      historyByTimeframe: {},
       winrate: 0,
+      winrateByTimeframe: {},
     };
   });
   return state;

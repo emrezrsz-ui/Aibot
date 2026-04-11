@@ -354,6 +354,8 @@ export default function Home() {
                       <TradeHistory
                         symbol={signal.symbol}
                         trades={tradingState[signal.symbol]?.history || []}
+                        historyByTimeframe={tradingState[signal.symbol]?.historyByTimeframe}
+                        winrateByTimeframe={tradingState[signal.symbol]?.winrateByTimeframe}
                         winrate={tradingState[signal.symbol]?.winrate || 0}
                         currentTimeframe={selectedInterval}
                       />

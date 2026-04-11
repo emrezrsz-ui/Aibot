@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS stats (
   symbol          TEXT NOT NULL,           -- "BTCUSDT"
   timeframe       TEXT NOT NULL,           -- "15m"
   total_trades    INTEGER NOT NULL DEFAULT 0,
-  winning_trades  INTEGER NOT NULL DEFAULT 0,
+  winning_trades  INTEGER NOT NULL DEFAULT 0,    -- Trades mit close_reason = 'TP' (WIN)
+  losing_trades   INTEGER NOT NULL DEFAULT 0,    -- Trades mit close_reason = 'SL' (LOSS)
   winrate         NUMERIC(5, 2) NOT NULL DEFAULT 0,  -- 0.00–100.00
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (symbol, timeframe)               -- Nur ein Eintrag pro Symbol+Timeframe
@@ -102,12 +103,14 @@ RETURNS VOID AS $$
 DECLARE
   v_total   INTEGER;
   v_wins    INTEGER;
+  v_losses  INTEGER;
   v_winrate NUMERIC;
 BEGIN
   SELECT
     COUNT(*),
-    COUNT(*) FILTER (WHERE close_reason = 'TP')
-  INTO v_total, v_wins
+    COUNT(*) FILTER (WHERE close_reason = 'TP'),
+    COUNT(*) FILTER (WHERE close_reason = 'SL')
+  INTO v_total, v_wins, v_losses
   FROM trades
   WHERE symbol = p_symbol
     AND timeframe = p_timeframe
@@ -119,12 +122,13 @@ BEGIN
     v_winrate := 0;
   END IF;
 
-  INSERT INTO stats (symbol, timeframe, total_trades, winning_trades, winrate)
-  VALUES (p_symbol, p_timeframe, v_total, v_wins, v_winrate)
+  INSERT INTO stats (symbol, timeframe, total_trades, winning_trades, losing_trades, winrate)
+  VALUES (p_symbol, p_timeframe, v_total, v_wins, v_losses, v_winrate)
   ON CONFLICT (symbol, timeframe)
   DO UPDATE SET
     total_trades   = EXCLUDED.total_trades,
     winning_trades = EXCLUDED.winning_trades,
+    losing_trades  = EXCLUDED.losing_trades,
     winrate        = EXCLUDED.winrate,
     updated_at     = NOW();
 END;
