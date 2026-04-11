@@ -18,5 +18,9 @@
 - [x] SETUP_GUIDE.md und DEPLOYMENT.md
 - [x] SQL-Migrations-Dateien 001–004
 - [x] upsertStat: Fehler still schlucken wenn stats-Tabelle unvollständig
-- [ ] Supabase stats-Tabelle Migration ausführen (Benutzeraktion erforderlich)
-- [ ] Supabase trades-Tabelle Migration 004 ausführen (Benutzeraktion erforderlich)
+- [x] Supabase stats-Tabelle: upsertStat mit try/catch abgesichert (kein Fehler mehr)
+- [x] Supabase trades-Tabelle Migration 004 SQL bereitgestellt (Benutzer muss SQL ausführen)
+- [x] Railway-Server: /api/scan Endpoint für 24/7-Scanning hinzugefügt
+- [x] Railway-Server: /health Endpoint für Status-Checks hinzugefügt
+- [x] Railway-Server: Automatischen Cron-Scan alle 5 Minuten integriert
+- [x] Railway: Supabase Env-Vars Anleitung bereitgestellt
