@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { CheckCircle, XCircle, Clock, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, XCircle, Clock, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Target, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
@@ -28,6 +28,8 @@ interface ScanSignal {
   note: string | null;
   scannedAt: Date;
   actionAt: Date | null;
+  closeReason?: "TP" | "SL" | null; // Auto-Close Grund
+  closePrice?: number | null; // Preis beim Close
 }
 
 // ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -54,7 +56,23 @@ function formatTime(date: Date): string {
 
 // ─── Status-Badge ─────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: SignalStatus }) {
+function StatusBadge({ status, closeReason }: { status: SignalStatus; closeReason?: "TP" | "SL" | null }) {
+  if (closeReason === "TP") {
+    return (
+      <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-bold bg-emerald-900/40 border border-emerald-400/50 text-emerald-400">
+        <Target className="w-3 h-3" />
+        AUTO-CLOSED (TP)
+      </span>
+    );
+  }
+  if (closeReason === "SL") {
+    return (
+      <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-bold bg-orange-900/40 border border-orange-400/50 text-orange-400">
+        <AlertCircle className="w-3 h-3" />
+        AUTO-CLOSED (SL)
+      </span>
+    );
+  }
   if (status === "EXECUTED") {
     return (
       <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-bold bg-green-900/40 border border-green-400/50 text-green-400">
@@ -155,7 +173,7 @@ function SignalRow({ signal, onUpdate }: { signal: ScanSignal; onUpdate: () => v
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <StatusBadge status={signal.status} />
+          <StatusBadge status={signal.status} closeReason={signal.closeReason} />
           <span className="text-gray-600 text-xs font-mono">{formatTime(signal.scannedAt)}</span>
         </div>
       </div>

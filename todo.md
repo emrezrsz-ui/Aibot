@@ -41,3 +41,12 @@
 - [x] Scanner: Signal-Berechnung bei jeder neuen Kerze statt alle 5 Minuten
 - [x] Scanner: /health Endpoint um WebSocket-Status erweitert
 - [x] Frontend: Signals-Seite mit Live-WebSocket-Status-Bar
+- [x] Backend: Trade-Close-Monitor implementieren (überwacht TP/SL gegen Live-Preise)
+- [x] Backend: Automatisches Close bei TP/SL mit close_price und close_reason speichern
+- [x] Backend: tRPC-Mutation für manuelles EXECUTED/IGNORED-Markieren (ohne close_price zu ändern)
+- [x] Frontend: Trade-Status UI: Zeige "Auto-Closed (TP)" oder "Auto-Closed (SL)" vs. "Pending"
+- [x] Frontend: Zwei Statistik-Widgets: "Bot Performance" (TP/SL) + "Deine Performance" (EXECUTED/IGNORED)
+- [x] Backend: updateSignalStatus Mutation prüft und sichert (nur EXECUTED/IGNORED, nicht Close-Preise)
+- [x] Frontend: TradePerformance Komponente in Signals.tsx eingebunden
+- [ ] Datenbank: Alte Trades mit close_price=entry_price auf NULL setzen (für saubere Analyse)
+- [ ] Analyse: Echte Performance-Report mit korrekten Metriken generieren

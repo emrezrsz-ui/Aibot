@@ -1,4 +1,3 @@
-import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -8,6 +7,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { createScannerRouter, startAutoScan } from "../scanner";
+import { loadActiveTrades, checkAndCloseTrades, createTradeMonitorRouter } from "../trade-monitor";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +38,8 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Scanner API (/health, /api/scan, /api/signals)
   app.use(createScannerRouter());
+  // Trade Monitor API (/monitor/status)
+  app.use(createTradeMonitorRouter());
   // tRPC API
   app.use(
     "/api/trpc",
@@ -60,10 +62,33 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  server.listen(port, async () => {
     console.log(`Server running on http://localhost:${port}/`);
     // 24/7 Auto-Scan starten (alle 5 Minuten)
     startAutoScan();
+
+    // Trade-Monitor starten
+    console.log("[TradeMonitor] Starte Trade-Close-Monitor...");
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+      if (supabaseUrl && supabaseKey) {
+        const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+        await loadActiveTrades(supabase);
+
+        // Pruefe Trades alle 10 Sekunden
+        setInterval(async () => {
+          await checkAndCloseTrades(supabase);
+        }, 10_000);
+        console.log("[TradeMonitor] Trade-Close-Monitor aktiv");
+      } else {
+        console.warn("[TradeMonitor] Supabase nicht konfiguriert — Trade-Monitor deaktiviert");
+      }
+    } catch (err) {
+      console.error("[TradeMonitor] Fehler beim Starten:", err);
+    }
   });
 }
 

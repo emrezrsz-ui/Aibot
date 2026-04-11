@@ -20,6 +20,7 @@
 import { Router } from "express";
 import WebSocket from "ws";
 import { insertScanSignal } from "./db";
+import { updateLivePrice, loadActiveTrades, checkAndCloseTrades } from "./trade-monitor";
 
 // ─── Konfiguration ────────────────────────────────────────────────────────────
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
@@ -391,14 +392,17 @@ function connectWebSocket(): void {
       const kline = event.data?.k;
       if (!kline) return;
 
+      const closePrice = parseFloat(kline.c);
+      const symbol = kline.s;
+      const interval = kline.i;
+
+      // Aktualisiere Live-Preis für Trade-Monitor
+      updateLivePrice(symbol, closePrice);
+
       // Nur geschlossene Kerzen verarbeiten (x === true)
       if (kline.x) {
         candleCloseCount++;
-        const closePrice = parseFloat(kline.c);
-        const symbol = kline.s;
-        const interval = kline.i;
-
-        console.log(`\n🕯️ [Scanner/WS] Kerze geschlossen: ${symbol} ${interval} @ $${closePrice}`);
+        console.log(`\n📋 [Scanner/WS] Kerze geschlossen: ${symbol} ${interval} @ $${closePrice}`);
 
         processClosedCandle(symbol, interval, closePrice).catch(err => {
           console.error("[Scanner/WS] Signal-Verarbeitung fehlgeschlagen:", err);
