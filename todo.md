@@ -48,5 +48,8 @@
 - [x] Frontend: Zwei Statistik-Widgets: "Bot Performance" (TP/SL) + "Deine Performance" (EXECUTED/IGNORED)
 - [x] Backend: updateSignalStatus Mutation prüft und sichert (nur EXECUTED/IGNORED, nicht Close-Preise)
 - [x] Frontend: TradePerformance Komponente in Signals.tsx eingebunden
+- [ ] Railway Env-Vars setzen: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+- [ ] Warten bis neue Trades mit echten Close-Preisen generiert werden (mindestens 30 Trades)
 - [ ] Datenbank: Alte Trades mit close_price=entry_price auf NULL setzen (für saubere Analyse)
-- [ ] Analyse: Echte Performance-Report mit korrekten Metriken generieren
+- [ ] Analyse: Echte Performance-Report mit korrekten Metriken generieren (Win-Rate, Profit Factor, etc.)
+- [ ] 10 Verbesserungsvorschläge basierend auf echten Daten überarbeiten
