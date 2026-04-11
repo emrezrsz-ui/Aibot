@@ -201,30 +201,36 @@ export async function insertTrade(trade: Omit<DbTrade, "created_at">): Promise<D
     .single();
 
   if (error) {
-    // Wenn optionale Spalten fehlen: nochmal ohne sie versuchen
-    if (error.message.includes("column") && error.message.includes("schema cache")) {
-      console.warn("[Supabase] Spalte fehlt, versuche ohne optionale Felder:", error.message);
-      const coreInsert = {
+    // Wenn Spalte fehlt: schrittweise Felder entfernen bis Insert klappt
+    if (error.message.includes("schema cache") || error.message.includes("column")) {
+      console.warn("[Supabase] Spalte fehlt, versuche Minimal-Insert:", error.message);
+
+      // Stufe 2: ohne strength und optionale Felder
+      const insert2 = {
         id: trade.id,
         symbol: trade.symbol ?? "",
         type: trade.type ?? "BUY",
         entry_price: trade.entry_price ?? 0,
         stop_loss: trade.stop_loss ?? 0,
         take_profit: trade.take_profit ?? 0,
-        strength: trade.strength ?? 0,
         timeframe: trade.timeframe ?? "15m",
         status: trade.status ?? "ACTIVE",
       };
-      const { data: coreData, error: coreError } = await supabase
-        .from("trades")
-        .insert(coreInsert)
-        .select()
-        .single();
-      if (coreError) {
-        console.error("[Supabase] insertTrade (core):", coreError.message);
-        return null;
-      }
-      return coreData;
+      const { data: d2, error: e2 } = await supabase.from("trades").insert(insert2).select().single();
+      if (!e2) return d2;
+
+      // Stufe 3: nur absolut notwendige Felder
+      const insert3 = {
+        id: trade.id,
+        symbol: trade.symbol ?? "",
+        type: trade.type ?? "BUY",
+        status: trade.status ?? "ACTIVE",
+      };
+      const { data: d3, error: e3 } = await supabase.from("trades").insert(insert3).select().single();
+      if (!e3) return d3;
+
+      console.error("[Supabase] insertTrade (alle Stufen fehlgeschlagen):", e3.message);
+      return null;
     }
     console.error("[Supabase] insertTrade:", error.message);
     return null;
