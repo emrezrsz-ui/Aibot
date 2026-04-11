@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, InsertScanSignal, ScanSignal, scanSignals, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,57 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ─── scan_signals Queries ────────────────────────────────────────────────────
+
+/** Letzte Scanner-Signale laden (Standard: 50 neueste) */
+export async function getRecentSignals(limit = 50): Promise<ScanSignal[]> {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    return await db
+      .select()
+      .from(scanSignals)
+      .orderBy(desc(scanSignals.scannedAt))
+      .limit(limit);
+  } catch (error) {
+    console.error("[Database] getRecentSignals:", error);
+    return [];
+  }
+}
+
+/** Signal-Status aktualisieren (EXECUTED oder IGNORED) */
+export async function updateSignalStatus(
+  id: number,
+  status: "EXECUTED" | "IGNORED",
+  note?: string
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  try {
+    await db
+      .update(scanSignals)
+      .set({ status, note: note ?? null, actionAt: new Date() })
+      .where(eq(scanSignals.id, id));
+    return true;
+  } catch (error) {
+    console.error("[Database] updateSignalStatus:", error);
+    return false;
+  }
+}
+
+/** Neues Scanner-Signal speichern */
+export async function insertScanSignal(signal: InsertScanSignal): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const result = await db.insert(scanSignals).values(signal);
+    return (result[0] as { insertId: number }).insertId ?? null;
+  } catch (error) {
+    console.error("[Database] insertScanSignal:", error);
+    return null;
+  }
 }
 
 // TODO: add feature queries here as your schema grows.

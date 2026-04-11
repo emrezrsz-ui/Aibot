@@ -26,3 +26,26 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 // TODO: Add your tables here
+
+/**
+ * Scanner-Signale: Vom 24/7-Scanner erfasste Markt-Signale.
+ * Können manuell als EXECUTED oder IGNORED markiert werden.
+ */
+export const scanSignals = mysqlTable("scan_signals", {
+  id: int("id").autoincrement().primaryKey(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  signal: varchar("signal", { length: 10 }).notNull(), // BUY | SELL | NEUTRAL
+  strength: int("strength").notNull().default(0),
+  currentPrice: text("currentPrice").notNull(),
+  rsi: text("rsi").notNull(),
+  ema12: text("ema12").notNull(),
+  ema26: text("ema26").notNull(),
+  status: mysqlEnum("status", ["PENDING", "EXECUTED", "IGNORED"]).default("PENDING").notNull(),
+  note: text("note"), // Optionale Notiz des Benutzers
+  scannedAt: timestamp("scannedAt").defaultNow().notNull(),
+  actionAt: timestamp("actionAt"), // Wann EXECUTED/IGNORED gesetzt wurde
+});
+
+export type ScanSignal = typeof scanSignals.$inferSelect;
+export type InsertScanSignal = typeof scanSignals.$inferInsert;

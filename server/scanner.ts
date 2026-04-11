@@ -10,6 +10,7 @@
  */
 
 import { Router } from "express";
+import { insertScanSignal } from "./db";
 
 // ─── Konfiguration ────────────────────────────────────────────────────────────
 const BINANCE_API = "https://api.binance.us/api/v3";
@@ -159,6 +160,25 @@ export async function runScan(): Promise<ScanResult[]> {
         );
 
         // Starke Signale in Supabase speichern
+        // Alle Signale (≥50%) in der DB speichern für manuelle Verwaltung
+        if (signal !== "NEUTRAL" && strength >= 50) {
+          try {
+            await insertScanSignal({
+              symbol,
+              interval,
+              signal,
+              strength,
+              currentPrice: String(currentPrice),
+              rsi: String(result.rsi),
+              ema12: String(result.ema12),
+              ema26: String(result.ema26),
+            });
+          } catch (dbErr) {
+            // DB-Fehler still loggen — kein Abbruch des Scans
+            console.warn("[Scanner] DB-Insert fehlgeschlagen:", dbErr instanceof Error ? dbErr.message : dbErr);
+          }
+        }
+
         if (supabase && signal !== "NEUTRAL" && strength >= ALERT_THRESHOLD) {
           strongSignals++;
           try {

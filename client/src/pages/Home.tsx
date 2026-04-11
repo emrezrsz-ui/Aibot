@@ -12,6 +12,7 @@ import { SignalBadge } from "@/components/SignalBadge";
 import { TradeHistory } from "@/components/TradeHistory";
 import { MarketDataCard } from "@/components/MarketDataCard";
 import { AICommandCenter } from "@/components/AICommandCenter";
+import { ScannerSignals } from "@/components/ScannerSignals";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw, Clock, Bell, BellOff, X, Database, HardDrive } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -337,6 +338,11 @@ export default function Home() {
           {/* AI Command Center */}
           <div className="mb-12 p-6 bg-gray-900/50 border border-cyan-400/20 rounded-lg">
             <AICommandCenter />
+          </div>
+
+          {/* Scanner-Signale: Manuelle Verwaltung */}
+          <div className="mb-12">
+            <ScannerSignals />
           </div>
 
           {/* Signals Grid */}

@@ -24,3 +24,9 @@
 - [x] Railway-Server: /health Endpoint für Status-Checks hinzugefügt
 - [x] Railway-Server: Automatischen Cron-Scan alle 5 Minuten integriert
 - [x] Railway: Supabase Env-Vars Anleitung bereitgestellt
+- [x] Supabase: scan_signals Tabelle für Scanner-Ergebnisse angelegt
+- [x] server/scanner.ts: Scan-Ergebnisse in scan_signals Tabelle gespeichert
+- [x] tRPC-Router: updateSignalStatus Mutation (EXECUTED / IGNORED)
+- [x] tRPC-Router: getSignals Query (letzte Scanner-Signale laden)
+- [x] UI: ScannerSignals Komponente mit Aktions-Buttons (Ausführen / Ignorieren)
+- [x] UI: Signal-Status-Badge (PENDING / EXECUTED / IGNORED) in der Signalliste
