@@ -325,7 +325,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let forcedReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let currentReconnectDelay = RECONNECT_DELAY_MS;
-const HEARTBEAT_TIMEOUT_MS = 90_000; // 90s ohne Nachricht → Reconnect
+const HEARTBEAT_TIMEOUT_MS = 300_000; // 5 Minuten ohne Nachricht → Reconnect (Binance sendet Heartbeats alle 3min)
 
 function buildStreamUrl(): string {
   // Combined Stream: alle Symbole × alle Intervalle
@@ -537,17 +537,49 @@ export async function runScan(): Promise<ScanResult[]> {
   return results;
 }
 
+// ─── REST-Polling Fallback (wenn WebSocket fehlschlaegt) ──────────────────────
+let restPollingTimer: ReturnType<typeof setInterval> | null = null;
+
+function startRESTPolling(): void {
+  if (restPollingTimer) return; // Bereits aktiv
+  console.log("[Scanner/REST] Starte REST-Polling (WebSocket nicht verfuegbar)...");
+  
+  // Sofort einen Scan durchfuehren
+  runScan().catch(err => console.error("[Scanner/REST] Fehler:", err));
+  
+  // Dann alle 5 Minuten
+  restPollingTimer = setInterval(() => {
+    runScan().catch(err => console.error("[Scanner/REST] Fehler:", err));
+  }, 5 * 60 * 1000);
+}
+
+function stopRESTPolling(): void {
+  if (restPollingTimer) {
+    clearInterval(restPollingTimer);
+    restPollingTimer = null;
+    console.log("[Scanner/REST] REST-Polling gestoppt");
+  }
+}
+
 // ─── Start-Funktion ──────────────────────────────────────────────────────────
 export async function startAutoScan(): Promise<void> {
-  console.log("[Scanner/WS] Starte WebSocket-Scanner...");
-  console.log(`[Scanner/WS] Symbole: ${SYMBOLS.join(", ")}`);
-  console.log(`[Scanner/WS] Intervalle: ${INTERVALS.join(", ")}`);
+  console.log("[Scanner] Starte Scanner (WebSocket + REST-Fallback)...");
+  console.log(`[Scanner] Symbole: ${SYMBOLS.join(", ")}`);
+  console.log(`[Scanner] Intervalle: ${INTERVALS.join(", ")}`);
 
   // 1. Historische Daten via REST laden
   await initializeBuffers();
 
-  // 2. WebSocket-Verbindung aufbauen
+  // 2. WebSocket-Verbindung aufbauen (mit REST-Fallback)
   connectWebSocket();
+  
+  // 3. Nach 30 Sekunden: Wenn WebSocket nicht verbunden, starte REST-Polling
+  setTimeout(() => {
+    if (!wsConnected) {
+      console.warn("[Scanner] WebSocket nach 30s nicht verbunden — starte REST-Polling Fallback");
+      startRESTPolling();
+    }
+  }, 30_000);
 }
 
 // ─── Express Router ──────────────────────────────────────────────────────────
