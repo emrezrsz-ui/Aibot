@@ -53,3 +53,18 @@
 - [ ] Datenbank: Alte Trades mit close_price=entry_price auf NULL setzen (für saubere Analyse)
 - [ ] Analyse: Echte Performance-Report mit korrekten Metriken generieren (Win-Rate, Profit Factor, etc.)
 - [ ] 10 Verbesserungsvorschläge basierend auf echten Daten überarbeiten
+
+## Phase: Professionelle Trading-Filter (Neu)
+
+- [x] Backend: 4h EMA 200 Berechnung hinzufügen (Multi-Timeframe-Analyse)
+- [x] Backend: Volumen-SMA 20 Berechnung hinzufügen
+- [x] Backend: Verbesserte Signal-Stärke-Berechnung (EMA-Distanz + RSI + Volumen)
+- [x] Backend: XRP-Sonderregel für Signal-Stärke implementieren (aggressivere Volumen-Gewichtung)
+- [x] Backend: Filter-Konfiguration (MTF-Filter, Volumen-Filter) speichern
+- [x] Frontend: Filter-Settings-Panel mit Toggle-Switches erstellen
+- [x] Frontend: MTF-Filter Toggle (4h EMA 200 Trend-Filter)
+- [x] Frontend: Volumen-Filter Toggle (SMA 20 Volumen-Bestätigung)
+- [x] Backend: Filter-Logik in Scanner integrieren (Signal-Freigabe steuern)
+- [ ] Backend: Supabase: filter_config Tabelle anlegen für Benutzer-Einstellungen
+- [ ] Testen: Alle Filter lokal und auf Railway testen
+- [ ] Checkpoint speichern und zu GitHub pushen

@@ -14,6 +14,8 @@ export interface AppSettings {
   notificationsEnabled: boolean;
   defaultTimeframe: string;
   scanIntervalSeconds: number;
+  mtfTrendFilterEnabled: boolean;  // Multi-Timeframe-Filter (4h EMA 200)
+  volumeConfirmationEnabled: boolean;  // Volumen-Bestätigungs-Filter (SMA 20)
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +24,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
   defaultTimeframe: "15m",
   scanIntervalSeconds: 30,
+  mtfTrendFilterEnabled: false,
+  volumeConfirmationEnabled: false,
 };
 
 const LOCAL_SETTINGS_KEY = "crypto_signal_settings";
@@ -57,12 +61,14 @@ export function useSettings() {
 
     async function loadFromSupabase() {
       try {
-        const [threshold, sound, notifications, timeframe, interval] = await Promise.all([
+        const [threshold, sound, notifications, timeframe, interval, mtfFilter, volumeFilter] = await Promise.all([
           getSetting("alert_threshold"),
           getSetting("sound_enabled"),
           getSetting("notifications_enabled"),
           getSetting("default_timeframe"),
           getSetting("scan_interval_seconds"),
+          getSetting("mtf_trend_filter_enabled"),
+          getSetting("volume_confirmation_enabled"),
         ]);
 
         setSettings(prev => ({
@@ -72,6 +78,8 @@ export function useSettings() {
           notificationsEnabled: notifications !== null ? notifications === "true" : prev.notificationsEnabled,
           defaultTimeframe: timeframe || prev.defaultTimeframe,
           scanIntervalSeconds: interval ? parseInt(interval) : prev.scanIntervalSeconds,
+          mtfTrendFilterEnabled: mtfFilter !== null ? mtfFilter === "true" : prev.mtfTrendFilterEnabled,
+          volumeConfirmationEnabled: volumeFilter !== null ? volumeFilter === "true" : prev.volumeConfirmationEnabled,
         }));
       } catch (err) {
         console.error("[Settings] Laden aus Supabase fehlgeschlagen:", err);

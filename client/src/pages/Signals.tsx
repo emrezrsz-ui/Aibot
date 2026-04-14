@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { ScannerSignals } from "@/components/ScannerSignals";
 import { TradePerformance } from "@/components/TradePerformance";
+import { FilterSettingsPanel } from "@/components/FilterSettingsPanel";
 import { ArrowLeft, Wifi, WifiOff, RefreshCw, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -177,6 +178,9 @@ export default function Signals() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
+          {/* Filter-Einstellungen */}
+          <FilterSettingsPanel />
+
           {/* Performance Dashboard */}
           <section>
             <h2 className="text-lg font-bold text-cyan-400 font-mono mb-4">📊 PERFORMANCE DASHBOARD</h2>

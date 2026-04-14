@@ -21,12 +21,23 @@ import { Router } from "express";
 import WebSocket from "ws";
 import { insertScanSignal } from "./db";
 import { updateLivePrice, loadActiveTrades, checkAndCloseTrades } from "./trade-monitor";
+import {
+  calculateEMA,
+  calculateRSI,
+  calculateSMA,
+  calculateAdvancedSignalStrength,
+  checkMTFTrendFilter,
+  checkVolumeConfirmationFilter,
+} from "./indicators";
+import { getActiveFilters } from "./filter-config";
 
 // ─── Konfiguration ────────────────────────────────────────────────────────────
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"];
 const INTERVALS = ["15m", "1h"];
+const INTERVALS_WITH_4H = ["15m", "1h", "4h"]; // Für MTF-Analyse
 const ALERT_THRESHOLD = 75;
 const CANDLE_BUFFER_SIZE = 100; // Rollierende Kerzen-Historie
+const VOLUME_BUFFER_SIZE = 100; // Für Volumen-SMA 20
 const RECONNECT_DELAY_MS = 5_000; // 5 Sekunden Reconnect-Pause
 const MAX_RECONNECT_DELAY_MS = 60_000; // Max 60 Sekunden
 const FORCED_RECONNECT_MS = 23 * 60 * 60 * 1000; // 23h (vor Binance 24h-Limit)
@@ -44,52 +55,9 @@ async function getSupabaseClient() {
   }
 }
 
-// ─── RSI Berechnung ───────────────────────────────────────────────────────────
-function calculateRSI(prices: number[], period = 14): number {
-  if (prices.length < period + 1) return 50;
-  let gains = 0, losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = prices[i] - prices[i - 1];
-    if (diff > 0) gains += diff; else losses += Math.abs(diff);
-  }
-  let avgGain = gains / period;
-  let avgLoss = losses / period;
-  for (let i = period + 1; i < prices.length; i++) {
-    const diff = prices[i] - prices[i - 1];
-    avgGain = (avgGain * (period - 1) + (diff > 0 ? diff : 0)) / period;
-    avgLoss = (avgLoss * (period - 1) + (diff < 0 ? Math.abs(diff) : 0)) / period;
-  }
-  if (avgLoss === 0) return 100;
-  return 100 - 100 / (1 + avgGain / avgLoss);
-}
+// Indikatoren werden jetzt aus indicators.ts importiert
 
-// ─── EMA Berechnung ───────────────────────────────────────────────────────────
-function calculateEMA(prices: number[], period: number): number {
-  if (prices.length < period) return prices[prices.length - 1] || 0;
-  const k = 2 / (period + 1);
-  let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  for (let i = period; i < prices.length; i++) {
-    ema = prices[i] * k + ema * (1 - k);
-  }
-  return ema;
-}
-
-// ─── Signal generieren ────────────────────────────────────────────────────────
-function generateSignal(rsi: number, ema12: number, ema26: number, currentPrice: number) {
-  let signal = "NEUTRAL", strength = 50;
-  if (rsi < 35 || ema12 > ema26) {
-    signal = "BUY"; strength = 55;
-    if (rsi < 35) strength += Math.min(25, (35 - rsi) * 1.5);
-    if (ema12 > ema26) strength += 10;
-    if (currentPrice > ema12) strength += 5;
-  } else if (rsi > 65 || ema12 < ema26) {
-    signal = "SELL"; strength = 55;
-    if (rsi > 65) strength += Math.min(25, (rsi - 65) * 1.5);
-    if (ema12 < ema26) strength += 10;
-    if (currentPrice < ema12) strength += 5;
-  }
-  return { signal, strength: Math.min(100, Math.round(strength)) };
-}
+// Signal-Generierung wird jetzt in processClosedCandle mit advancedSignalStrength durchgeführt
 
 // ─── Scan-Ergebnis Typ ──────────────────────────────────────────────────────
 interface ScanResult {
@@ -107,6 +75,8 @@ interface ScanResult {
 // ─── Kerzen-Buffer: Rollierende Close-Preise pro Symbol/Intervall ────────────
 type BufferKey = string; // z.B. "BTCUSDT_15m"
 const candleBuffers = new Map<BufferKey, number[]>();
+const volumeBuffers = new Map<BufferKey, number[]>(); // Für Volumen-SMA 20
+const ema200Buffers = new Map<BufferKey, number[]>(); // Für 4h EMA 200 (MTF)
 
 function getBufferKey(symbol: string, interval: string): BufferKey {
   return `${symbol}_${interval}`;
@@ -120,12 +90,46 @@ function getBuffer(symbol: string, interval: string): number[] {
   return candleBuffers.get(key)!;
 }
 
-function pushToBuffer(symbol: string, interval: string, closePrice: number) {
+function getVolumeBuffer(symbol: string, interval: string): number[] {
+  const key = getBufferKey(symbol, interval);
+  if (!volumeBuffers.has(key)) {
+    volumeBuffers.set(key, []);
+  }
+  return volumeBuffers.get(key)!;
+}
+
+function getEMA200Buffer(symbol: string, interval: string): number[] {
+  const key = getBufferKey(symbol, interval);
+  if (!ema200Buffers.has(key)) {
+    ema200Buffers.set(key, []);
+  }
+  return ema200Buffers.get(key)!;
+}
+
+function pushToBuffer(symbol: string, interval: string, closePrice: number, volume: number = 0) {
   const buffer = getBuffer(symbol, interval);
   buffer.push(closePrice);
   // Rollierendes Fenster: max CANDLE_BUFFER_SIZE Kerzen behalten
   if (buffer.length > CANDLE_BUFFER_SIZE) {
     buffer.splice(0, buffer.length - CANDLE_BUFFER_SIZE);
+  }
+
+  // Volumen speichern
+  if (volume > 0) {
+    const volBuffer = getVolumeBuffer(symbol, interval);
+    volBuffer.push(volume);
+    if (volBuffer.length > VOLUME_BUFFER_SIZE) {
+      volBuffer.splice(0, volBuffer.length - VOLUME_BUFFER_SIZE);
+    }
+  }
+
+  // EMA 200 aktualisieren (für MTF-Analyse)
+  if (interval === "4h") {
+    const ema200Buffer = getEMA200Buffer(symbol, interval);
+    ema200Buffer.push(closePrice);
+    if (ema200Buffer.length > 200) {
+      ema200Buffer.splice(0, ema200Buffer.length - 200);
+    }
   }
 }
 
@@ -199,7 +203,60 @@ async function processClosedCandle(
   const rsi = calculateRSI(buffer);
   const ema12 = calculateEMA(buffer, 12);
   const ema26 = calculateEMA(buffer, 26);
-  const { signal, strength } = generateSignal(rsi, ema12, ema26, closePrice);
+
+  // Basis-Signal (BUY/SELL/NEUTRAL)
+  let signal: "BUY" | "SELL" | "NEUTRAL" = "NEUTRAL";
+  if (rsi < 35 || ema12 > ema26) {
+    signal = "BUY";
+  } else if (rsi > 65 || ema12 < ema26) {
+    signal = "SELL";
+  }
+
+  // Volumen-Daten für Signal-Stärke
+  const volumeBuffer = getVolumeBuffer(symbol, interval);
+  const currentVolume = volumeBuffer.length > 0 ? volumeBuffer[volumeBuffer.length - 1] : 0;
+  const volumeSMA20 = volumeBuffer.length > 0 ? calculateSMA(volumeBuffer, 20) : 0;
+
+  // Verbesserte Signal-Stärke-Berechnung
+  const strength = calculateAdvancedSignalStrength({
+    rsi,
+    ema12,
+    ema26,
+    currentPrice: closePrice,
+    currentVolume,
+    volumeSMA20,
+    signal,
+    symbol,
+  });
+
+  // ─── Filter-Logik anwenden ──────────────────────────────────────────────────
+  const filters = getActiveFilters();
+  let filterRejected = false;
+  let filterReason = "";
+
+  // MTF-Trend-Filter (4h EMA 200)
+  if (filters.mtfTrendFilterEnabled && signal !== "NEUTRAL") {
+    const ema200Buffer = getEMA200Buffer(symbol, "4h");
+    const ema200_4h = ema200Buffer.length >= 200 ? calculateEMA(ema200Buffer, 200) : 0;
+    
+    if (ema200_4h > 0 && !checkMTFTrendFilter(closePrice, ema200_4h, signal)) {
+      filterRejected = true;
+      filterReason = `MTF-Filter: Preis ${signal === "BUY" ? "unter" : "über"} EMA200(4h)`;
+    }
+  }
+
+  // Volumen-Bestätigungs-Filter (SMA 20)
+  if (!filterRejected && filters.volumeConfirmationEnabled && signal !== "NEUTRAL") {
+    if (!checkVolumeConfirmationFilter(currentVolume, volumeSMA20)) {
+      filterRejected = true;
+      filterReason = `Volumen-Filter: ${currentVolume.toFixed(0)} <= SMA20(${volumeSMA20.toFixed(0)})`;
+    }
+  }
+
+  // Log Filter-Ergebnis
+  if (filterRejected) {
+    console.log(`  ⛔ Signal gefiltert: ${filterReason}`);
+  }
 
   const result: ScanResult = {
     symbol,
@@ -219,8 +276,8 @@ async function processClosedCandle(
     `${signal.padEnd(7)} ${strength}% | RSI: ${result.rsi} | $${closePrice.toFixed(4)}`
   );
 
-  // Signal in DB speichern (≥50%)
-  if (signal !== "NEUTRAL" && strength >= 50) {
+  // Signal in DB speichern (≥50%) — aber nur wenn nicht gefiltert
+  if (signal !== "NEUTRAL" && strength >= 50 && !filterRejected) {
     try {
       await insertScanSignal({
         symbol,
@@ -237,8 +294,8 @@ async function processClosedCandle(
     }
   }
 
-  // Starke Signale auch in Supabase speichern (für Legacy-Kompatibilität)
-  if (signal !== "NEUTRAL" && strength >= ALERT_THRESHOLD) {
+  // Starke Signale auch in Supabase speichern (für Legacy-Kompatibilität) — aber nur wenn nicht gefiltert
+  if (signal !== "NEUTRAL" && strength >= ALERT_THRESHOLD && !filterRejected) {
     try {
       const supabase = await getSupabaseClient();
       if (supabase) {
@@ -487,7 +544,26 @@ export async function runScan(): Promise<ScanResult[]> {
         const rsi = calculateRSI(closes);
         const ema12 = calculateEMA(closes, 12);
         const ema26 = calculateEMA(closes, 26);
-        const { signal, strength } = generateSignal(rsi, ema12, ema26, currentPrice);
+
+        // Basis-Signal
+        let signal: "BUY" | "SELL" | "NEUTRAL" = "NEUTRAL";
+        if (rsi < 35 || ema12 > ema26) {
+          signal = "BUY";
+        } else if (rsi > 65 || ema12 < ema26) {
+          signal = "SELL";
+        }
+
+        // Volumen-Daten (REST-Fallback hat kein Volumen, daher Fallback-Wert)
+        const strength = calculateAdvancedSignalStrength({
+          rsi,
+          ema12,
+          ema26,
+          currentPrice,
+          currentVolume: 0,
+          volumeSMA20: 0,
+          signal,
+          symbol,
+        });
 
         const result: ScanResult = {
           symbol, interval, signal, strength, currentPrice,
