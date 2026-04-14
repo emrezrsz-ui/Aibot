@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -49,3 +49,19 @@ export const scanSignals = mysqlTable("scan_signals", {
 
 export type ScanSignal = typeof scanSignals.$inferSelect;
 export type InsertScanSignal = typeof scanSignals.$inferInsert;
+
+/**
+ * Filter-Konfiguration: Benutzer-spezifische Filter-Einstellungen.
+ * Speichert die Aktivierungsstatus der professionellen Trading-Filter.
+ */
+export const filterConfigs = mysqlTable("filter_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  mtfTrendFilterEnabled: boolean("mtfTrendFilterEnabled").default(false).notNull(),
+  volumeConfirmationEnabled: boolean("volumeConfirmationEnabled").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type FilterConfig = typeof filterConfigs.$inferSelect;
+export type InsertFilterConfig = typeof filterConfigs.$inferInsert;

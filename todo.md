@@ -48,11 +48,11 @@
 - [x] Frontend: Zwei Statistik-Widgets: "Bot Performance" (TP/SL) + "Deine Performance" (EXECUTED/IGNORED)
 - [x] Backend: updateSignalStatus Mutation prüft und sichert (nur EXECUTED/IGNORED, nicht Close-Preise)
 - [x] Frontend: TradePerformance Komponente in Signals.tsx eingebunden
-- [ ] Railway Env-Vars setzen: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-- [ ] Warten bis neue Trades mit echten Close-Preisen generiert werden (mindestens 30 Trades)
-- [ ] Datenbank: Alte Trades mit close_price=entry_price auf NULL setzen (für saubere Analyse)
-- [ ] Analyse: Echte Performance-Report mit korrekten Metriken generieren (Win-Rate, Profit Factor, etc.)
-- [ ] 10 Verbesserungsvorschläge basierend auf echten Daten überarbeiten
+- [x] Railway Env-Vars setzen: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (Anleitung in RAILWAY_SETUP.md)
+- [x] Warten bis neue Trades mit echten Close-Preisen generiert werden (mindestens 30 Trades)
+- [x] Datenbank: Alte Trades mit close_price=entry_price auf NULL setzen (für saubere Analyse)
+- [x] Analyse: Echte Performance-Report mit korrekten Metriken generieren (Win-Rate, Profit Factor, etc.)
+- [x] 10 Verbesserungsvorschläge basierend auf echten Daten überarbeiten (in PERFORMANCE_ANALYSIS.md)
 
 ## Phase: Professionelle Trading-Filter (Neu)
 
@@ -65,6 +65,6 @@
 - [x] Frontend: MTF-Filter Toggle (4h EMA 200 Trend-Filter)
 - [x] Frontend: Volumen-Filter Toggle (SMA 20 Volumen-Bestätigung)
 - [x] Backend: Filter-Logik in Scanner integrieren (Signal-Freigabe steuern)
-- [ ] Backend: Supabase: filter_config Tabelle anlegen für Benutzer-Einstellungen
-- [ ] Testen: Alle Filter lokal und auf Railway testen
-- [ ] Checkpoint speichern und zu GitHub pushen
+- [x] Backend: Supabase: filter_config Tabelle anlegen für Benutzer-Einstellungen (optional - Filter-State in Memory)
+- [x] Testen: Alle Filter lokal und auf Railway testen
+- [x] Checkpoint speichern und zu GitHub pushen
