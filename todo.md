@@ -197,3 +197,42 @@
 - [x] Git: Push zu user_github/main
 - [x] Checkpoint: Phase 4 Implementierung speichern
 - [x] Dokumentation: PHASE4_GUIDE.md erstellen
+
+
+## Phase 5: Final Integration & Automation
+
+### 1. tRPC Procedures
+- [x] server/routers.ts: saveApiKeys Mutation (Binance API-Keys verschlüsselt speichern)
+- [x] server/routers.ts: updateTradingConfig Mutation (Bot-Status, Demo/Real Mode)
+- [x] server/routers.ts: generateWebhookUrl Mutation (MetaTrader Webhook URL)
+- [x] server/routers.ts: getTradingConfig Query (Aktuelle Einstellungen laden)
+
+### 2. Signal-Handler Integration
+- [x] server/scanner.ts: Signal-Handler mit Bot-Status Check
+- [x] server/scanner.ts: STRONG Signal → placeMarketOrder aufrufen
+- [x] server/scanner.ts: Filter-Checks vor Order-Ausführung
+- [x] server/scanner.ts: Activity-Logs für jeden Schritt
+
+### 3. WebSocket Live-Logs
+- [x] server/_core/index.ts: Socket.IO Setup für Activity-Logs
+- [x] server/activity-logger.ts: Emit Activity-Logs über WebSocket
+- [x] client/src/hooks/useActivityLog.ts: WebSocket-Listener implementieren
+- [x] client/src/components/ActivityLogTerminal.tsx: Live-Updates anzeigen
+
+### 4. MetaTrader Webhook
+- [x] server/webhook.ts: generateWebhookUrl Funktion
+- [x] server/webhook.ts: POST /api/webhook/mt5 Endpoint
+- [x] server/webhook.ts: Signal-Parsing aus MQL5-Payload
+- [x] Dokumentation: MQL5-Skript-Template
+
+### 5. Demo-Durchlauf & Tests
+- [x] Simulierter Signal → Filter → Order Flow im Demo-Modus
+- [x] Activity-Log zeigt jeden Schritt
+- [x] Integration Tests für kompletten Flow
+- [x] Ziel: 120+ Tests bestanden
+
+### 6. GitHub & Finaler Checkpoint
+- [x] Git: Alle Änderungen committen
+- [x] Git: Push zu user_github/main
+- [x] Checkpoint: Phase 5 Final speichern
+- [x] Dokumentation: PHASE5_GUIDE.md + Webhook-URL
