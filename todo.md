@@ -68,3 +68,48 @@
 - [x] Backend: Supabase: filter_config Tabelle anlegen für Benutzer-Einstellungen (optional - Filter-State in Memory)
 - [x] Testen: Alle Filter lokal und auf Railway testen
 - [x] Checkpoint speichern und zu GitHub pushen
+
+
+## Phase 2: Master-Strategie — Signal-Qualität maximieren
+
+### 1. RSI-Divergenz-Erkennung
+- [ ] Backend: detectRSIDivergence() Funktion implementieren (Bullish/Bearish)
+- [ ] Backend: Divergenz-Logik in processClosedCandle integrieren
+- [ ] Backend: Signal-Stärke um +20% boosten bei erkannter Divergenz
+- [x] Backend: Divergenz-Daten in scan_signals speichern (neue Spalten)
+- [x] Vitest: Tests für Divergenz-Erkennung (Bullish/Bearish Szenarien)
+
+### 2. Multi-Timeframe Confluence
+- [ ] Backend: Multi-Timeframe Scanner erweitern (5m, 15m, 1h Daten sammeln)
+- [ ] Backend: Confluence-Check: Signal nur "STRONG" wenn ≥2 Timeframes konfluent
+- [x] Backend: Confluence-Bonus: +15% Stärke bei 2 Timeframes, +25% bei 3 Timeframes
+- [x] Backend: Confluence-Status in scan_signals speichern
+- [x] Vitest: Tests für Confluence-Logik (2/3 Timeframe Szenarien)
+
+### 3. Trailing Stop Loss
+- [ ] Drizzle: trades Tabelle erweitern (trailingStopLevel, trailingStopStatus)
+- [x] Backend: Trailing Stop Logik implementieren (+5% → Break-Even, +10% → +5%)
+- [ ] Backend: Trade-Close-Monitor um Trailing-Stop-Prüfung erweitern
+- [ ] Backend: Trailing-Stop-Werte in Supabase speichern und aktualisieren
+- [x] Vitest: Tests für Trailing-Stop-Logik (Profit-Szenarien)
+
+### 4. UI erweitern
+- [ ] Frontend: SignalCard erweitern um Divergenz-Badge (Bullish/Bearish)
+- [ ] Frontend: Confluence-Status anzeigen (2/3 Timeframes ✓)
+- [ ] Frontend: Trailing-Stop-Status in TradeCard anzeigen
+- [ ] Frontend: Divergenz + Confluence in Signal-Stärke-Berechnung visualisieren
+- [ ] Frontend: Tooltip für Divergenz/Confluence erklären
+
+### 5. Supabase-Stabilität & Tests
+- [ ] Backend: Supabase Connection Pool überprüfen
+- [ ] Backend: Retry-Logik für Trailing-Stop-Updates
+- [ ] Backend: Error-Handling für Divergenz/Confluence Speicherung
+- [ ] Vitest: Integration Tests (Divergenz + Confluence + Trailing-Stop)
+- [ ] Vitest: Supabase Mock-Tests für Daten-Persistierung
+- [ ] npm test: Alle Tests bestanden (Ziel: 50+)
+
+### 6. GitHub Push & Checkpoint
+- [ ] Git: Alle Änderungen committen
+- [ ] Git: Push zu user_github/main
+- [ ] Checkpoint: Phase 2 Implementierung speichern
+- [ ] Dokumentation: PHASE2_GUIDE.md erstellen

@@ -41,6 +41,14 @@ export const scanSignals = mysqlTable("scan_signals", {
   rsi: text("rsi").notNull(),
   ema12: text("ema12").notNull(),
   ema26: text("ema26").notNull(),
+  // Phase 2: RSI-Divergenz-Erkennung
+  hasDivergence: boolean("hasDivergence").default(false).notNull(),
+  divergenceType: varchar("divergenceType", { length: 20 }), // "bullish" | "bearish" | null
+  divergenceStrength: int("divergenceStrength").default(0).notNull(),
+  // Phase 2: Multi-Timeframe Confluence
+  confluenceCount: int("confluenceCount").default(1).notNull(), // 1–3 Timeframes
+  confluenceTimeframes: varchar("confluenceTimeframes", { length: 50 }), // "5m,15m,1h"
+  confluenceBonus: int("confluenceBonus").default(0).notNull(), // +15 oder +25
   status: mysqlEnum("status", ["PENDING", "EXECUTED", "IGNORED"]).default("PENDING").notNull(),
   note: text("note"), // Optionale Notiz des Benutzers
   scannedAt: timestamp("scannedAt").defaultNow().notNull(),

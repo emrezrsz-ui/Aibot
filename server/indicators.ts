@@ -184,3 +184,210 @@ export function checkVolumeConfirmationFilter(
   if (volumeSMA20 === 0) return true; // Keine Daten → Filter nicht anwenden
   return currentVolume > volumeSMA20;
 }
+
+
+// ─── RSI-Divergenz-Erkennung (Phase 2) ─────────────────────────────────────────
+/**
+ * Erkennt Bullish/Bearish Divergenzen zwischen Preis und RSI.
+ * 
+ * Bullish Divergence: Preis macht neues Tief, aber RSI macht höheres Tief
+ * → Signal-Stärke +20%
+ * 
+ * Bearish Divergence: Preis macht neues Hoch, aber RSI macht niedrigeres Hoch
+ * → Signal-Stärke +20%
+ */
+export interface RSIDivergenceResult {
+  hasDivergence: boolean;
+  type: "bullish" | "bearish" | null;
+  strength: number; // 0–100
+}
+
+export function detectRSIDivergence(
+  prices: number[],
+  rsiValues: number[],
+  lookbackPeriod = 14
+): RSIDivergenceResult {
+  if (prices.length < lookbackPeriod + 2 || rsiValues.length < lookbackPeriod + 2) {
+    return { hasDivergence: false, type: null, strength: 0 };
+  }
+
+  const currentIdx = prices.length - 1;
+  const prevIdx = currentIdx - lookbackPeriod;
+
+  const currentPrice = prices[currentIdx];
+  const prevPrice = prices[prevIdx];
+  const currentRSI = rsiValues[currentIdx];
+  const prevRSI = rsiValues[prevIdx];
+
+  // ─── Bullish Divergence: Preis tiefer, RSI höher ───────────────────────────
+  if (currentPrice < prevPrice && currentRSI > prevRSI) {
+    // Zusätzliche Validierung: RSI sollte im überverkauften Bereich sein
+    const isBullishValid = currentRSI < 40 && prevRSI < 50;
+    if (isBullishValid) {
+      const strengthBoost = Math.min(20, (prevRSI - currentRSI) * 2);
+      return {
+        hasDivergence: true,
+        type: "bullish",
+        strength: Math.round(strengthBoost),
+      };
+    }
+  }
+
+  // ─── Bearish Divergence: Preis höher, RSI tiefer ───────────────────────────
+  if (currentPrice > prevPrice && currentRSI < prevRSI) {
+    // Zusätzliche Validierung: RSI sollte im überkauften Bereich sein
+    const isBearishValid = currentRSI > 60 && prevRSI > 50;
+    if (isBearishValid) {
+      const strengthBoost = Math.min(20, (currentRSI - prevRSI) * 2);
+      return {
+        hasDivergence: true,
+        type: "bearish",
+        strength: Math.round(strengthBoost),
+      };
+    }
+  }
+
+  return { hasDivergence: false, type: null, strength: 0 };
+}
+
+/**
+ * Hilfsfunktion: Berechne RSI-Werte für einen Preis-Array
+ * Gibt Array mit RSI-Werten für jeden Preis zurück
+ */
+export function calculateRSIArray(prices: number[], period = 14): number[] {
+  const rsiValues: number[] = [];
+  
+  for (let i = 0; i < prices.length; i++) {
+    const slice = prices.slice(0, i + 1);
+    const rsi = calculateRSI(slice, period);
+    rsiValues.push(rsi);
+  }
+  
+  return rsiValues;
+}
+
+
+// ─── Multi-Timeframe Confluence (Phase 2) ──────────────────────────────────────
+/**
+ * Prüft, ob Signale über mehrere Timeframes konfluent sind.
+ * Ein Signal ist nur 'STRONG', wenn mindestens 2 von 3 Timeframes (5m, 15m, 1h) 
+ * das gleiche Signal geben.
+ */
+export interface ConfluenceResult {
+  confluenceCount: number; // 1–3 (Anzahl der Timeframes mit gleichem Signal)
+  confluenceTimeframes: string[]; // z.B. ["5m", "15m"]
+  confluenceBonus: number; // +15 (2 TF) oder +25 (3 TF)
+  isStrong: boolean; // true wenn ≥2 Timeframes konfluent
+}
+
+export function checkMultiTimeframeConfluence(
+  signals: { timeframe: string; signal: "BUY" | "SELL" | "NEUTRAL" }[]
+): ConfluenceResult {
+  // Filtere nur BUY oder SELL Signale
+  const buySignals = signals.filter(s => s.signal === "BUY");
+  const sellSignals = signals.filter(s => s.signal === "SELL");
+
+  // Zähle konfluente Signale
+  if (buySignals.length >= 2) {
+    const timeframes = buySignals.map(s => s.timeframe);
+    const bonus = buySignals.length === 3 ? 25 : 15;
+    return {
+      confluenceCount: buySignals.length,
+      confluenceTimeframes: timeframes,
+      confluenceBonus: bonus,
+      isStrong: true,
+    };
+  }
+
+  if (sellSignals.length >= 2) {
+    const timeframes = sellSignals.map(s => s.timeframe);
+    const bonus = sellSignals.length === 3 ? 25 : 15;
+    return {
+      confluenceCount: sellSignals.length,
+      confluenceTimeframes: timeframes,
+      confluenceBonus: bonus,
+      isStrong: true,
+    };
+  }
+
+  // Keine Confluence
+  return {
+    confluenceCount: 1,
+    confluenceTimeframes: [],
+    confluenceBonus: 0,
+    isStrong: false,
+  };
+}
+
+// ─── Trailing Stop Loss (Phase 3) ──────────────────────────────────────────────
+/**
+ * Berechnet den Trailing Stop Loss basierend auf Gewinn-Prozentsatz.
+ * 
+ * Logik:
+ * - +5% Gewinn: SL auf Break-Even (Entry-Preis)
+ * - +10% Gewinn: SL auf +5% Gewinn (sichere 5% ab)
+ */
+export interface TrailingStopResult {
+  currentProfit: number; // Gewinn in %
+  newStopLoss: number;
+  stopLossType: "entry" | "breakeven" | "profit5pct" | "none";
+}
+
+export function calculateTrailingStopLoss(
+  entryPrice: number,
+  currentPrice: number,
+  signal: "BUY" | "SELL"
+): TrailingStopResult {
+  if (signal === "BUY") {
+    const profitPct = ((currentPrice - entryPrice) / entryPrice) * 100;
+
+    if (profitPct >= 10) {
+      // +10% Gewinn: Sichere +5% ab
+      const newSL = entryPrice * 1.05;
+      return {
+        currentProfit: profitPct,
+        newStopLoss: newSL,
+        stopLossType: "profit5pct",
+      };
+    } else if (profitPct >= 5) {
+      // +5% Gewinn: SL auf Break-Even
+      return {
+        currentProfit: profitPct,
+        newStopLoss: entryPrice,
+        stopLossType: "breakeven",
+      };
+    }
+
+    return {
+      currentProfit: profitPct,
+      newStopLoss: entryPrice * 0.98, // Original SL
+      stopLossType: "none",
+    };
+  } else {
+    // SELL Signal
+    const profitPct = ((entryPrice - currentPrice) / entryPrice) * 100;
+
+    if (profitPct >= 10) {
+      // +10% Gewinn: Sichere +5% ab
+      const newSL = entryPrice * 0.95;
+      return {
+        currentProfit: profitPct,
+        newStopLoss: newSL,
+        stopLossType: "profit5pct",
+      };
+    } else if (profitPct >= 5) {
+      // +5% Gewinn: SL auf Break-Even
+      return {
+        currentProfit: profitPct,
+        newStopLoss: entryPrice,
+        stopLossType: "breakeven",
+      };
+    }
+
+    return {
+      currentProfit: profitPct,
+      newStopLoss: entryPrice * 1.02, // Original SL
+      stopLossType: "none",
+    };
+  }
+}

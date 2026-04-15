@@ -28,6 +28,8 @@ import {
   calculateAdvancedSignalStrength,
   checkMTFTrendFilter,
   checkVolumeConfirmationFilter,
+  detectRSIDivergence,
+  calculateRSIArray,
 } from "./indicators";
 import { getActiveFilters } from "./filter-config";
 

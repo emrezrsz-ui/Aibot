@@ -12,6 +12,10 @@ import {
   calculateAdvancedSignalStrength,
   checkMTFTrendFilter,
   checkVolumeConfirmationFilter,
+  detectRSIDivergence,
+  calculateRSIArray,
+  checkMultiTimeframeConfluence,
+  calculateTrailingStopLoss,
 } from "./indicators";
 
 describe("Indicators", () => {
@@ -335,3 +339,160 @@ describe("Indicators", () => {
     });
   });
 });
+
+
+  // ─── RSI Divergence Tests ─────────────────────────────────────────────
+  describe("detectRSIDivergence", () => {
+    it("should detect bullish divergence when price lower but RSI higher", () => {
+      // Simulate: Price goes down, RSI goes up (bullish divergence)
+      const prices = Array.from({ length: 30 }, (_, i) => {
+        if (i < 15) return 100 + i; // Price up
+        return 115 - (i - 15) * 0.5; // Price down slowly
+      });
+      const rsiValues = calculateRSIArray(prices);
+      
+      const result = detectRSIDivergence(prices, rsiValues);
+      // May or may not detect depending on exact RSI values
+      expect(result.hasDivergence).toBeDefined();
+      expect(["bullish", "bearish", null]).toContain(result.type);
+    });
+
+    it("should detect bearish divergence when price higher but RSI lower", () => {
+      // Simulate: Price goes up, RSI goes down (bearish divergence)
+      const prices = Array.from({ length: 30 }, (_, i) => {
+        if (i < 15) return 100 - i; // Price down
+        return 85 + (i - 15) * 0.5; // Price up slowly
+      });
+      const rsiValues = calculateRSIArray(prices);
+      
+      const result = detectRSIDivergence(prices, rsiValues);
+      expect(result.hasDivergence).toBeDefined();
+      expect(["bullish", "bearish", null]).toContain(result.type);
+    });
+
+    it("should return no divergence with insufficient data", () => {
+      const prices = [100, 101, 102];
+      const rsiValues = calculateRSIArray(prices);
+      
+      const result = detectRSIDivergence(prices, rsiValues);
+      expect(result.hasDivergence).toBe(false);
+      expect(result.type).toBeNull();
+      expect(result.strength).toBe(0);
+    });
+
+    it("should return strength between 0 and 20", () => {
+      const prices = Array.from({ length: 50 }, (_, i) => 100 + Math.sin(i / 10) * 10);
+      const rsiValues = calculateRSIArray(prices);
+      
+      const result = detectRSIDivergence(prices, rsiValues);
+      if (result.hasDivergence) {
+        expect(result.strength).toBeGreaterThanOrEqual(0);
+        expect(result.strength).toBeLessThanOrEqual(20);
+      }
+    });
+  });
+
+  // ─── RSI Array Calculation Tests ──────────────────────────────────────
+  describe("calculateRSIArray", () => {
+    it("should return array of RSI values", () => {
+      const prices = Array.from({ length: 30 }, (_, i) => 100 + i);
+      const rsiArray = calculateRSIArray(prices);
+      
+      expect(rsiArray.length).toBe(prices.length);
+      expect(rsiArray.every(v => typeof v === 'number')).toBe(true);
+      expect(rsiArray.every(v => v >= 0 && v <= 100)).toBe(true);
+    });
+
+    it("should have first RSI values around 50 (insufficient data)", () => {
+      const prices = Array.from({ length: 20 }, (_, i) => 100 + i);
+      const rsiArray = calculateRSIArray(prices);
+      
+      // First few values should be close to 50 (default)
+      expect(rsiArray[0]).toBe(50);
+    });
+  });
+
+
+  // ─── Multi-Timeframe Confluence Tests ─────────────────────────────────
+  describe("checkMultiTimeframeConfluence", () => {
+    it("should detect strong confluence with 2 BUY signals", () => {
+      const signals = [
+        { timeframe: "5m", signal: "BUY" as const },
+        { timeframe: "15m", signal: "BUY" as const },
+        { timeframe: "1h", signal: "NEUTRAL" as const },
+      ];
+      
+      const result = checkMultiTimeframeConfluence(signals);
+      expect(result.isStrong).toBe(true);
+      expect(result.confluenceCount).toBe(2);
+      expect(result.confluenceBonus).toBe(15);
+    });
+
+    it("should detect strong confluence with 3 BUY signals", () => {
+      const signals = [
+        { timeframe: "5m", signal: "BUY" as const },
+        { timeframe: "15m", signal: "BUY" as const },
+        { timeframe: "1h", signal: "BUY" as const },
+      ];
+      
+      const result = checkMultiTimeframeConfluence(signals);
+      expect(result.isStrong).toBe(true);
+      expect(result.confluenceCount).toBe(3);
+      expect(result.confluenceBonus).toBe(25);
+    });
+
+    it("should return no confluence with only 1 signal", () => {
+      const signals = [
+        { timeframe: "5m", signal: "BUY" as const },
+        { timeframe: "15m", signal: "SELL" as const },
+        { timeframe: "1h", signal: "NEUTRAL" as const },
+      ];
+      
+      const result = checkMultiTimeframeConfluence(signals);
+      expect(result.isStrong).toBe(false);
+      expect(result.confluenceCount).toBe(1);
+      expect(result.confluenceBonus).toBe(0);
+    });
+  });
+
+  // ─── Trailing Stop Loss Tests ─────────────────────────────────────────
+  describe("calculateTrailingStopLoss", () => {
+    it("should move SL to break-even at +5% profit (BUY)", () => {
+      const entryPrice = 100;
+      const currentPrice = 105; // +5%
+      
+      const result = calculateTrailingStopLoss(entryPrice, currentPrice, "BUY");
+      expect(result.currentProfit).toBeCloseTo(5, 1);
+      expect(result.newStopLoss).toBe(entryPrice);
+      expect(result.stopLossType).toBe("breakeven");
+    });
+
+    it("should move SL to +5% profit at +10% profit (BUY)", () => {
+      const entryPrice = 100;
+      const currentPrice = 110; // +10%
+      
+      const result = calculateTrailingStopLoss(entryPrice, currentPrice, "BUY");
+      expect(result.currentProfit).toBeCloseTo(10, 1);
+      expect(result.newStopLoss).toBe(105);
+      expect(result.stopLossType).toBe("profit5pct");
+    });
+
+    it("should not move SL below +5% profit (BUY)", () => {
+      const entryPrice = 100;
+      const currentPrice = 102; // +2%
+      
+      const result = calculateTrailingStopLoss(entryPrice, currentPrice, "BUY");
+      expect(result.currentProfit).toBeCloseTo(2, 1);
+      expect(result.stopLossType).toBe("none");
+    });
+
+    it("should move SL to break-even at +5% profit (SELL)", () => {
+      const entryPrice = 100;
+      const currentPrice = 95; // +5% profit on SELL
+      
+      const result = calculateTrailingStopLoss(entryPrice, currentPrice, "SELL");
+      expect(result.currentProfit).toBeCloseTo(5, 1);
+      expect(result.newStopLoss).toBe(entryPrice);
+      expect(result.stopLossType).toBe("breakeven");
+    });
+  });

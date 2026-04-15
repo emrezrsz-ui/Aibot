@@ -29,6 +29,13 @@
       "when": 1776204901349,
       "tag": "0003_chief_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776209780864,
+      "tag": "0004_damp_vanisher",
+      "breakpoints": true
     }
   ]
 }
