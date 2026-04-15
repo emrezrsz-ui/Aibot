@@ -128,18 +128,18 @@
 - [x] server/binance.ts: Binance-Klasse mit CCXT-Integration
 - [x] server/routers.ts: tRPC Procedure für saveApiKeys (mit Verschlüsselung)
 - [x] server/routers.ts: tRPC Procedure für getConnectionStatus
-- [ ] Vitest: Tests für Verschlüsselung und API-Verbindung
+- [x] Vitest: Tests für Verschlüsselung und API-Verbindung
 
 ### 3. Backend: MetaTrader & Risk Management
 - [x] server/webhook.ts: generateWebhookUrl() Funktion
 - [x] server/risk-manager.ts: checkSlippage() und validateTradeSize()
-- [ ] server/routers.ts: tRPC Procedure für updateTradingConfig
-- [ ] server/routers.ts: tRPC Procedure für generateWebhookUrl
-- [ ] Vitest: Tests für Risk Management Logik
+- [x] server/routers.ts: tRPC Procedure für updateTradingConfig
+- [x] server/routers.ts: tRPC Procedure für generateWebhookUrl
+- [x] Vitest: Tests für Risk Management Logik
 
 ### 4. Frontend: Trading Hub Seite
 - [x] client/src/pages/TradingHub.tsx: Hauptseite mit 3 Karten
-- [ ] client/src/components/AccountStatusCard.tsx: Account-Status Anzeige
+- [x] client/src/components/AccountStatusCard.tsx: Account-Status Anzeige
 - [x] client/src/components/ConnectionManagerCard.tsx: Binance API-Form + MetaTrader Webhook
 - [x] client/src/components/MasterSwitch.tsx: Bot ON/OFF Toggle
 - [x] client/src/components/TradingModeToggle.tsx: Demo/Real Mode Toggle
@@ -148,13 +148,13 @@
 
 ### 5. Frontend: Live Activity Log
 - [x] client/src/components/ActivityLogTerminal.tsx: Terminal-Fenster mit Logs
-- [ ] client/src/hooks/useActivityLog.ts: Hook für Echtzeit-Log-Updates
-- [ ] WebSocket-Integration für Live-Logs
-- [ ] Styling: Schwarzer Hintergrund, grüne/rote Text-Farben
+- [x] client/src/hooks/useActivityLog.ts: Hook für Echtzeit-Log-Updates
+- [x] WebSocket-Integration für Live-Logs
+- [x] Styling: Schwarzer Hintergrund, grüne/rote Text-Farben
 
 ### 6. Integration & Tests
-- [ ] Alle Komponenten zusammenbinden
-- [ ] Vitest: Integration Tests (50+ Tests)
-- [ ] Supabase-Verbindung testen
-- [ ] Git: Committen und zu GitHub pushen
-- [ ] Checkpoint speichern
+- [x] Alle Komponenten zusammenbinden
+- [x] Vitest: Integration Tests (76 Tests)
+- [x] Supabase-Verbindung testen
+- [x] Git: Committen und zu GitHub pushen
+- [x] Checkpoint speichern
