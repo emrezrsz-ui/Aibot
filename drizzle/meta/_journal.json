@@ -36,6 +36,13 @@
       "when": 1776209780864,
       "tag": "0004_damp_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1776272682538,
+      "tag": "0005_tough_slyde",
+      "breakpoints": true
     }
   ]
 }

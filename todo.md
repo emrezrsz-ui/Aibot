@@ -113,3 +113,48 @@
 - [x] Git: Push zu user_github/main
 - [x] Checkpoint: Phase 2 Implementierung speichern
 - [x] Dokumentation: PHASE2_GUIDE.md erstellen
+
+
+## Phase 3: Trading Hub & Connection Manager
+
+### 1. Drizzle-Schema
+- [x] user_connections Tabelle: id, userId, exchange, apiKey (encrypted), apiSecret (encrypted), webhookUrl, status, createdAt
+- [x] trading_config Tabelle: id, userId, botStatus (ON/OFF), demoMode (true/false), slippageTolerance (%), maxTradeSize (USDT), createdAt, updatedAt
+- [x] Drizzle-Migration generieren und anwenden
+
+### 2. Backend: Binance API & Encryption
+- [x] npm install ccxt crypto-js
+- [x] server/encryption.ts: encryptApiKey() und decryptApiKey() Funktionen
+- [x] server/binance.ts: Binance-Klasse mit CCXT-Integration
+- [x] server/routers.ts: tRPC Procedure für saveApiKeys (mit Verschlüsselung)
+- [x] server/routers.ts: tRPC Procedure für getConnectionStatus
+- [ ] Vitest: Tests für Verschlüsselung und API-Verbindung
+
+### 3. Backend: MetaTrader & Risk Management
+- [x] server/webhook.ts: generateWebhookUrl() Funktion
+- [x] server/risk-manager.ts: checkSlippage() und validateTradeSize()
+- [ ] server/routers.ts: tRPC Procedure für updateTradingConfig
+- [ ] server/routers.ts: tRPC Procedure für generateWebhookUrl
+- [ ] Vitest: Tests für Risk Management Logik
+
+### 4. Frontend: Trading Hub Seite
+- [x] client/src/pages/TradingHub.tsx: Hauptseite mit 3 Karten
+- [ ] client/src/components/AccountStatusCard.tsx: Account-Status Anzeige
+- [x] client/src/components/ConnectionManagerCard.tsx: Binance API-Form + MetaTrader Webhook
+- [x] client/src/components/MasterSwitch.tsx: Bot ON/OFF Toggle
+- [x] client/src/components/TradingModeToggle.tsx: Demo/Real Mode Toggle
+- [x] client/src/components/RiskSettingsForm.tsx: Slippage + Max Trade Size
+- [x] App.tsx: Trading Hub als Navigator-Punkt hinzufügen
+
+### 5. Frontend: Live Activity Log
+- [x] client/src/components/ActivityLogTerminal.tsx: Terminal-Fenster mit Logs
+- [ ] client/src/hooks/useActivityLog.ts: Hook für Echtzeit-Log-Updates
+- [ ] WebSocket-Integration für Live-Logs
+- [ ] Styling: Schwarzer Hintergrund, grüne/rote Text-Farben
+
+### 6. Integration & Tests
+- [ ] Alle Komponenten zusammenbinden
+- [ ] Vitest: Integration Tests (50+ Tests)
+- [ ] Supabase-Verbindung testen
+- [ ] Git: Committen und zu GitHub pushen
+- [ ] Checkpoint speichern

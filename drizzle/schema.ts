@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -73,3 +73,44 @@ export const filterConfigs = mysqlTable("filter_configs", {
 
 export type FilterConfig = typeof filterConfigs.$inferSelect;
 export type InsertFilterConfig = typeof filterConfigs.$inferInsert;
+
+
+/**
+ * Phase 3: User Connections — Gespeicherte Exchange-Verbindungen (Binance, MetaTrader, etc.)
+ * API-Keys werden verschlüsselt gespeichert.
+ */
+export const userConnections = mysqlTable("user_connections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  exchange: varchar("exchange", { length: 50 }).notNull(), // "binance", "metatrader4", "metatrader5"
+  apiKey: text("apiKey").notNull(), // Verschlüsselt
+  apiSecret: text("apiSecret").notNull(), // Verschlüsselt
+  webhookUrl: text("webhookUrl"), // Für MetaTrader Webhooks
+  status: mysqlEnum("status", ["ACTIVE", "INACTIVE", "ERROR"]).default("INACTIVE").notNull(),
+  lastTestedAt: timestamp("lastTestedAt"),
+  errorMessage: text("errorMessage"), // Fehler-Details wenn status = ERROR
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserConnection = typeof userConnections.$inferSelect;
+export type InsertUserConnection = typeof userConnections.$inferInsert;
+
+/**
+ * Phase 3: Trading Config — Bot-Einstellungen pro Benutzer
+ * Speichert Bot-Status, Trading-Modi und Risk-Management-Parameter.
+ */
+export const tradingConfigs = mysqlTable("trading_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  botStatus: mysqlEnum("botStatus", ["ON", "OFF"]).default("OFF").notNull(),
+  demoMode: boolean("demoMode").default(true).notNull(), // true = Demo, false = Real Money
+  slippageTolerance: decimal("slippageTolerance", { precision: 5, scale: 2 }).default("0.5").notNull(), // %
+  maxTradeSize: decimal("maxTradeSize", { precision: 15, scale: 2 }).default("1000").notNull(), // USDT
+  demoBalance: decimal("demoBalance", { precision: 15, scale: 2 }).default("10000").notNull(), // Fiktives Kapital
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TradingConfig = typeof tradingConfigs.$inferSelect;
+export type InsertTradingConfig = typeof tradingConfigs.$inferInsert;
