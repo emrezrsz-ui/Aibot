@@ -73,43 +73,43 @@
 ## Phase 2: Master-Strategie — Signal-Qualität maximieren
 
 ### 1. RSI-Divergenz-Erkennung
-- [ ] Backend: detectRSIDivergence() Funktion implementieren (Bullish/Bearish)
-- [ ] Backend: Divergenz-Logik in processClosedCandle integrieren
-- [ ] Backend: Signal-Stärke um +20% boosten bei erkannter Divergenz
+- [x] Backend: detectRSIDivergence() Funktion implementieren (Bullish/Bearish)
+- [x] Backend: Divergenz-Logik in processClosedCandle integrieren
+- [x] Backend: Signal-Stärke um +20% boosten bei erkannter Divergenz
 - [x] Backend: Divergenz-Daten in scan_signals speichern (neue Spalten)
 - [x] Vitest: Tests für Divergenz-Erkennung (Bullish/Bearish Szenarien)
 
 ### 2. Multi-Timeframe Confluence
-- [ ] Backend: Multi-Timeframe Scanner erweitern (5m, 15m, 1h Daten sammeln)
-- [ ] Backend: Confluence-Check: Signal nur "STRONG" wenn ≥2 Timeframes konfluent
+- [x] Backend: Multi-Timeframe Scanner erweitern (5m, 15m, 1h Daten sammeln)
+- [x] Backend: Confluence-Check: Signal nur "STRONG" wenn ≥2 Timeframes konfluent
 - [x] Backend: Confluence-Bonus: +15% Stärke bei 2 Timeframes, +25% bei 3 Timeframes
 - [x] Backend: Confluence-Status in scan_signals speichern
 - [x] Vitest: Tests für Confluence-Logik (2/3 Timeframe Szenarien)
 
 ### 3. Trailing Stop Loss
-- [ ] Drizzle: trades Tabelle erweitern (trailingStopLevel, trailingStopStatus)
+- [x] Drizzle: trades Tabelle erweitern (trailingStopLevel, trailingStopStatus)
 - [x] Backend: Trailing Stop Logik implementieren (+5% → Break-Even, +10% → +5%)
 - [x] Backend: Trade-Close-Monitor um Trailing-Stop-Prüfung erweitern
-- [ ] Backend: Trailing-Stop-Werte in Supabase speichern und aktualisieren
+- [x] Backend: Trailing-Stop-Werte in Supabase speichern und aktualisieren
 - [x] Vitest: Tests für Trailing-Stop-Logik (Profit-Szenarien)
 
 ### 4. UI erweitern
 - [x] Frontend: SignalCard erweitern um Divergenz-Badge (Bullish/Bearish)
 - [x] Frontend: Confluence-Status anzeigen (2/3 Timeframes ✓)
 - [x] Frontend: Trailing-Stop-Status in TradeCard anzeigen
-- [ ] Frontend: Divergenz + Confluence in Signal-Stärke-Berechnung visualisieren
-- [ ] Frontend: Tooltip für Divergenz/Confluence erklären
+- [x] Frontend: Divergenz + Confluence in Signal-Stärke-Berechnung visualisieren
+- [x] Frontend: Tooltip für Divergenz/Confluence erklären
 
 ### 5. Supabase-Stabilität & Tests
-- [ ] Backend: Supabase Connection Pool überprüfen
-- [ ] Backend: Retry-Logik für Trailing-Stop-Updates
-- [ ] Backend: Error-Handling für Divergenz/Confluence Speicherung
+- [x] Backend: Supabase Connection Pool überprüfen
+- [x] Backend: Retry-Logik für Trailing-Stop-Updates
+- [x] Backend: Error-Handling für Divergenz/Confluence Speicherung
 - [x] Vitest: Integration Tests (Divergenz + Confluence + Trailing-Stop)
-- [ ] Vitest: Supabase Mock-Tests für Daten-Persistierung
-- [ ] npm test: Alle Tests bestanden (Ziel: 50+)
+- [x] Vitest: Supabase Mock-Tests für Daten-Persistierung
+- [x] npm test: Alle Tests bestanden (Ziel: 50+)
 
 ### 6. GitHub Push & Checkpoint
-- [ ] Git: Alle Änderungen committen
-- [ ] Git: Push zu user_github/main
-- [ ] Checkpoint: Phase 2 Implementierung speichern
-- [ ] Dokumentation: PHASE2_GUIDE.md erstellen
+- [x] Git: Alle Änderungen committen
+- [x] Git: Push zu user_github/main
+- [x] Checkpoint: Phase 2 Implementierung speichern
+- [x] Dokumentation: PHASE2_GUIDE.md erstellen
