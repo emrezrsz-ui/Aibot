@@ -199,3 +199,105 @@ export function createTradeMonitorRouter(): Router {
 
   return router;
 }
+
+
+// ─── Phase 2: Trailing Stop Loss ──────────────────────────────────────────────
+/**
+ * Prüfe und aktualisiere Trailing Stop Loss für aktive Trades
+ * Logik:
+ * - +5% Gewinn: Ziehe SL auf Break-Even
+ * - +10% Gewinn: Sichere +5% ab
+ */
+export async function updateTrailingStops(
+  supabaseClient: any
+): Promise<void> {
+  if (!supabaseClient || activeTrades.size === 0) return;
+
+  const toUpdate: Array<{
+    tradeId: string;
+    trade: ActiveTrade;
+    newStopLoss: number;
+  }> = [];
+
+  // Prüfe jeden aktiven Trade
+  for (const [tradeId, trade] of Array.from(activeTrades.entries())) {
+    const livePrice = livePrices.get(trade.symbol);
+    if (!livePrice) continue;
+
+    const price = livePrice.price;
+    let newStopLoss: number | null = null;
+
+    if (trade.type === "BUY") {
+      const profitPct = ((price - trade.entry_price) / trade.entry_price) * 100;
+
+      if (profitPct >= 10) {
+        // +10% Gewinn: Sichere +5% ab
+        newStopLoss = trade.entry_price * 1.05;
+      } else if (profitPct >= 5) {
+        // +5% Gewinn: SL auf Break-Even
+        newStopLoss = trade.entry_price;
+      }
+    } else {
+      // SELL
+      const profitPct = ((trade.entry_price - price) / trade.entry_price) * 100;
+
+      if (profitPct >= 10) {
+        // +10% Gewinn: Sichere +5% ab
+        newStopLoss = trade.entry_price * 0.95;
+      } else if (profitPct >= 5) {
+        // +5% Gewinn: SL auf Break-Even
+        newStopLoss = trade.entry_price;
+      }
+    }
+
+    // Nur aktualisieren wenn neuer SL günstiger ist
+    if (newStopLoss !== null) {
+      const isBetter =
+        trade.type === "BUY"
+          ? newStopLoss > trade.stop_loss
+          : newStopLoss < trade.stop_loss;
+
+      if (isBetter) {
+        toUpdate.push({
+          tradeId,
+          trade,
+          newStopLoss,
+        });
+      }
+    }
+  }
+
+  // Aktualisiere Trailing Stops in der Datenbank
+  for (const { tradeId, newStopLoss } of toUpdate) {
+    try {
+      const { error } = await supabaseClient
+        .from("trades")
+        .update({
+          stop_loss: newStopLoss,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", tradeId);
+
+      if (error) {
+        console.warn(
+          `[TradeMonitor] Fehler beim Aktualisieren von Trailing Stop für ${tradeId}:`,
+          error.message
+        );
+      } else {
+        // Aktualisiere lokalen Trade
+        const trade = activeTrades.get(tradeId);
+        if (trade) {
+          trade.stop_loss = newStopLoss;
+          console.log(
+            `  📊 Trailing Stop aktualisiert: ${tradeId} → SL: ${newStopLoss.toFixed(4)}`
+          );
+        }
+      }
+    } catch (err) {
+      console.error(
+        `[TradeMonitor] Exception beim Aktualisieren von Trailing Stop:`,
+        err
+      );
+    }
+  }
+}

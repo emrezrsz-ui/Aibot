@@ -30,6 +30,13 @@ interface ScanSignal {
   actionAt: Date | null;
   closeReason?: "TP" | "SL" | null; // Auto-Close Grund
   closePrice?: number | null; // Preis beim Close
+  // Phase 2: Divergenz und Confluence
+  hasDivergence?: boolean;
+  divergenceType?: "bullish" | "bearish" | null;
+  divergenceStrength?: number;
+  confluenceCount?: number;
+  confluenceTimeframes?: string;
+  confluenceBonus?: number;
 }
 
 // ─── Hilfsfunktionen ──────────────────────────────────────────────────────────
@@ -154,6 +161,22 @@ function SignalRow({ signal, onUpdate }: { signal: ScanSignal; onUpdate: () => v
           >
             {signal.signal}
           </span>
+          {/* Phase 2: Divergenz Badge */}
+          {signal.hasDivergence && (
+            <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${
+              signal.divergenceType === "bullish"
+                ? "bg-green-900/40 text-green-300 border border-green-400/50"
+                : "bg-red-900/40 text-red-300 border border-red-400/50"
+            }`}>
+              💎 {signal.divergenceType?.toUpperCase()}
+            </span>
+          )}
+          {/* Phase 2: Confluence Badge */}
+          {signal.confluenceCount && signal.confluenceCount >= 2 && (
+            <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 border border-purple-400/50">
+              🔗 {signal.confluenceCount}TF
+            </span>
+          )}
           {/* Stärke-Balken */}
           <div className="flex items-center gap-1">
             <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">

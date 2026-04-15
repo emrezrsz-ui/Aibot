@@ -89,14 +89,14 @@
 ### 3. Trailing Stop Loss
 - [ ] Drizzle: trades Tabelle erweitern (trailingStopLevel, trailingStopStatus)
 - [x] Backend: Trailing Stop Logik implementieren (+5% → Break-Even, +10% → +5%)
-- [ ] Backend: Trade-Close-Monitor um Trailing-Stop-Prüfung erweitern
+- [x] Backend: Trade-Close-Monitor um Trailing-Stop-Prüfung erweitern
 - [ ] Backend: Trailing-Stop-Werte in Supabase speichern und aktualisieren
 - [x] Vitest: Tests für Trailing-Stop-Logik (Profit-Szenarien)
 
 ### 4. UI erweitern
-- [ ] Frontend: SignalCard erweitern um Divergenz-Badge (Bullish/Bearish)
-- [ ] Frontend: Confluence-Status anzeigen (2/3 Timeframes ✓)
-- [ ] Frontend: Trailing-Stop-Status in TradeCard anzeigen
+- [x] Frontend: SignalCard erweitern um Divergenz-Badge (Bullish/Bearish)
+- [x] Frontend: Confluence-Status anzeigen (2/3 Timeframes ✓)
+- [x] Frontend: Trailing-Stop-Status in TradeCard anzeigen
 - [ ] Frontend: Divergenz + Confluence in Signal-Stärke-Berechnung visualisieren
 - [ ] Frontend: Tooltip für Divergenz/Confluence erklären
 
@@ -104,7 +104,7 @@
 - [ ] Backend: Supabase Connection Pool überprüfen
 - [ ] Backend: Retry-Logik für Trailing-Stop-Updates
 - [ ] Backend: Error-Handling für Divergenz/Confluence Speicherung
-- [ ] Vitest: Integration Tests (Divergenz + Confluence + Trailing-Stop)
+- [x] Vitest: Integration Tests (Divergenz + Confluence + Trailing-Stop)
 - [ ] Vitest: Supabase Mock-Tests für Daten-Persistierung
 - [ ] npm test: Alle Tests bestanden (Ziel: 50+)
 

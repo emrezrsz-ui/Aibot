@@ -496,3 +496,87 @@ describe("Indicators", () => {
       expect(result.stopLossType).toBe("breakeven");
     });
   });
+
+
+  // ─── Integration Tests: Phase 2 Master-Strategie ─────────────────────────
+  describe("Phase 2 Integration: Divergence + Confluence + Trailing Stop", () => {
+    it("should combine divergence + confluence for maximum signal strength", () => {
+      // Scenario: Bullish divergence + 2 timeframe confluence
+      const prices = Array.from({ length: 30 }, (_, i) => 100 + i * 0.5);
+      const rsiArray = calculateRSIArray(prices);
+      
+      const divergence = detectRSIDivergence(prices, rsiArray);
+      const confluence = checkMultiTimeframeConfluence([
+        { timeframe: "5m", signal: "BUY" as const },
+        { timeframe: "15m", signal: "BUY" as const },
+      ]);
+      
+      // Combined boost
+      let baseStrength = 60;
+      if (divergence.hasDivergence) baseStrength += divergence.strength;
+      if (confluence.isStrong) baseStrength += confluence.confluenceBonus;
+      
+      expect(baseStrength).toBeGreaterThan(60);
+      expect(baseStrength).toBeLessThanOrEqual(100);
+    });
+
+    it("should apply trailing stop at +5% profit", () => {
+      const entryPrice = 100;
+      const currentPrice = 105; // +5%
+      
+      const trailingStop = calculateTrailingStopLoss(entryPrice, currentPrice, "BUY");
+      
+      expect(trailingStop.currentProfit).toBeCloseTo(5, 1);
+      expect(trailingStop.newStopLoss).toBe(entryPrice);
+      expect(trailingStop.stopLossType).toBe("breakeven");
+    });
+
+    it("should apply trailing stop at +10% profit", () => {
+      const entryPrice = 100;
+      const currentPrice = 110; // +10%
+      
+      const trailingStop = calculateTrailingStopLoss(entryPrice, currentPrice, "BUY");
+      
+      expect(trailingStop.currentProfit).toBeCloseTo(10, 1);
+      expect(trailingStop.newStopLoss).toBe(105); // +5% profit
+      expect(trailingStop.stopLossType).toBe("profit5pct");
+    });
+
+    it("should not apply trailing stop below +5% profit", () => {
+      const entryPrice = 100;
+      const currentPrice = 103; // +3%
+      
+      const trailingStop = calculateTrailingStopLoss(entryPrice, currentPrice, "BUY");
+      
+      expect(trailingStop.currentProfit).toBeCloseTo(3, 1);
+      expect(trailingStop.stopLossType).toBe("none");
+    });
+
+    it("should detect strong confluence with 3 timeframes", () => {
+      const signals = [
+        { timeframe: "5m", signal: "BUY" as const },
+        { timeframe: "15m", signal: "BUY" as const },
+        { timeframe: "1h", signal: "BUY" as const },
+      ];
+      
+      const confluence = checkMultiTimeframeConfluence(signals);
+      
+      expect(confluence.isStrong).toBe(true);
+      expect(confluence.confluenceCount).toBe(3);
+      expect(confluence.confluenceBonus).toBe(25);
+    });
+
+    it("should handle mixed signals (no confluence)", () => {
+      const signals = [
+        { timeframe: "5m", signal: "BUY" as const },
+        { timeframe: "15m", signal: "SELL" as const },
+        { timeframe: "1h", signal: "NEUTRAL" as const },
+      ];
+      
+      const confluence = checkMultiTimeframeConfluence(signals);
+      
+      expect(confluence.isStrong).toBe(false);
+      expect(confluence.confluenceCount).toBe(1);
+      expect(confluence.confluenceBonus).toBe(0);
+    });
+  });
