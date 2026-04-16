@@ -114,3 +114,35 @@ export const tradingConfigs = mysqlTable("trading_configs", {
 
 export type TradingConfig = typeof tradingConfigs.$inferSelect;
 export type InsertTradingConfig = typeof tradingConfigs.$inferInsert;
+
+
+/**
+ * Trades: Ausgeführte Trades (Demo oder Real)
+ * Speichert Entry, Exit, TP/SL und Trailing-Stop-Informationen.
+ */
+export const trades = mysqlTable("trades", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  type: mysqlEnum("type", ["BUY", "SELL"]).notNull(),
+  entryPrice: decimal("entryPrice", { precision: 20, scale: 8 }).notNull(),
+  quantity: decimal("quantity", { precision: 20, scale: 8 }).notNull(),
+  takeProfit: decimal("takeProfit", { precision: 20, scale: 8 }).notNull(),
+  stopLoss: decimal("stopLoss", { precision: 20, scale: 8 }).notNull(),
+  closePrice: decimal("closePrice", { precision: 20, scale: 8 }),
+  status: mysqlEnum("status", ["OPEN", "CLOSED", "CANCELLED"]).default("OPEN").notNull(),
+  // Trailing Stop
+  trailingStopLevel: decimal("trailingStopLevel", { precision: 20, scale: 8 }),
+  trailingStopStatus: mysqlEnum("trailingStopStatus", ["NONE", "BREAK_EVEN", "SECURED"]).default("NONE").notNull(),
+  // Metadata
+  demoMode: boolean("demoMode").default(true).notNull(),
+  signalStrength: int("signalStrength").default(0).notNull(),
+  profitLoss: decimal("profitLoss", { precision: 20, scale: 8 }),
+  profitLossPercent: decimal("profitLossPercent", { precision: 5, scale: 2 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  closedAt: timestamp("closedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Trade = typeof trades.$inferSelect;
+export type InsertTrade = typeof trades.$inferInsert;
