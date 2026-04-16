@@ -118,3 +118,6 @@ client/public/__manus__/version.json
 # Scanner Backend
 scanner-backend/node_modules/
 scanner-backend/.env
+
+# GitHub Actions workflows (managed by Manus, exclude to prevent conflicts)
+.github/workflows/
