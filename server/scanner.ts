@@ -384,7 +384,9 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let forcedReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let currentReconnectDelay = RECONNECT_DELAY_MS;
-const HEARTBEAT_TIMEOUT_MS = 300_000; // 5 Minuten ohne Nachricht → Reconnect (Binance sendet Heartbeats alle 3min)
+const HEARTBEAT_TIMEOUT_MS = 90_000; // 90 Sekunden ohne Nachricht → Reconnect
+const MAX_RECONNECT_ATTEMPTS_PER_MINUTE = 5; // Max 5 Reconnect-Versuche pro Minute
+let reconnectAttemptsInWindow: number[] = []; // Timestamps der letzten Reconnect-Versuche
 
 function buildStreamUrl(): string {
   // Combined Stream: alle Symbole × alle Intervalle
@@ -421,7 +423,8 @@ function connectWebSocket(): void {
   ws.on("open", () => {
     wsConnected = true;
     currentReconnectDelay = RECONNECT_DELAY_MS; // Reset Backoff
-    console.log(`✅ [Scanner/WS] WebSocket verbunden! ${streamCount} Kline-Streams aktiv.`);
+    reconnectAttemptsInWindow = []; // Reset Rate-Limit Counter
+    console.log(`✅ [Scanner/WS] WebSocket verbunden! ${streamCount} Kline-Streams aktiv. (Reconnect #${wsReconnectCount} erfolgreich)`);
 
     // Forced Reconnect vor dem 24h-Limit
     forcedReconnectTimer = setTimeout(() => {
@@ -507,8 +510,23 @@ function connectWebSocket(): void {
 function scheduleReconnect(): void {
   if (reconnectTimer) return; // Bereits geplant
 
+  // Rate Limiting: Max 5 Reconnect-Versuche pro Minute
+  const now = Date.now();
+  const oneMinuteAgo = now - 60_000;
+  reconnectAttemptsInWindow = reconnectAttemptsInWindow.filter(ts => ts > oneMinuteAgo);
+
+  if (reconnectAttemptsInWindow.length >= MAX_RECONNECT_ATTEMPTS_PER_MINUTE) {
+    console.warn(
+      `[Scanner/WS] Rate Limit erreicht: ${reconnectAttemptsInWindow.length}/${MAX_RECONNECT_ATTEMPTS_PER_MINUTE} Versuche in der letzten Minute. Warte 60s...`
+    );
+    currentReconnectDelay = 60_000; // Erzwinge 60s Wartezeit
+  }
+
+  reconnectAttemptsInWindow.push(now);
   wsReconnectCount++;
-  console.log(`[Scanner/WS] Reconnect #${wsReconnectCount} in ${currentReconnectDelay / 1000}s...`);
+  console.log(
+    `[Scanner/WS] Reconnect #${wsReconnectCount} (${reconnectAttemptsInWindow.length}/${MAX_RECONNECT_ATTEMPTS_PER_MINUTE} pro Minute) in ${currentReconnectDelay / 1000}s...`
+  );
 
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;

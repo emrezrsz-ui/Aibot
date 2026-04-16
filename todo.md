@@ -236,3 +236,11 @@
 - [x] Git: Push zu user_github/main
 - [x] Checkpoint: Phase 5 Final speichern
 - [x] Dokumentation: PHASE5_GUIDE.md + Webhook-URL
+
+
+## Bug Fixes
+
+- [x] WebSocket Reconnect Loop: Über 1000 Reconnects, Status zeigt "Getrennt"
+- [x] Exponential Backoff für Reconnect-Versuche implementieren
+- [x] Connection-Pool limitieren (max 5 Reconnects pro Minute)
+- [x] GitHub Push nach Fix
