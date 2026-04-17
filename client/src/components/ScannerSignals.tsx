@@ -3,6 +3,7 @@
  * ============================================
  * Zeigt die letzten Scanner-Signale aus der DB.
  * Jedes Signal kann als "Ausgeführt" oder "Ignoriert" markiert werden.
+ * OPTIMIERT: Filterung auf Datenbank-Level statt Frontend-Level
  */
 
 import { useState } from "react";
@@ -285,25 +286,32 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "EXECUTED" | "IGNORED">("ALL");
   const [showAll, setShowAll] = useState(false);
 
-  const { data: signals, isLoading, refetch } = trpc.signals.list.useQuery(
-    { limit: 100 },
+  // Baue Filter-Objekt für Datenbank-Query (OPTIMIERT)
+  const dbFilters = React.useMemo(() => {
+    const filterObj: any = {};
+    
+    if (filters?.symbols.length) filterObj.symbols = filters.symbols;
+    if (filters?.intervals.length) filterObj.intervals = filters.intervals;
+    if (filters?.signalTypes.length) filterObj.signalTypes = filters.signalTypes;
+    
+    // Status-Filter: wenn "ALL" nicht ausgewählt, füge Status-Filter hinzu
+    if (filter !== "ALL") {
+      filterObj.statuses = [filter];
+    } else if (filters?.statuses.length) {
+      filterObj.statuses = filters.statuses;
+    }
+    
+    return Object.keys(filterObj).length > 0 ? filterObj : undefined;
+  }, [filters, filter]);
+
+  // Nutze signals.filtered Query statt signals.list für Datenbank-Filterung
+  const { data: signals, isLoading, refetch } = trpc.signals.filtered.useQuery(
+    dbFilters ? { ...dbFilters, limit: 100 } : { limit: 100 },
     { refetchInterval: 30_000 } // alle 30s automatisch aktualisieren
   );
 
-  const filtered = (signals ?? []).filter((s) => {
-    // Status-Filter
-    if (filter !== "ALL" && s.status !== filter) return false;
-    
-    // Zusätzliche Filter aus Props
-    if (filters) {
-      if (filters.symbols.length > 0 && !filters.symbols.includes(s.symbol)) return false;
-      if (filters.intervals.length > 0 && !filters.intervals.includes(s.interval)) return false;
-      if (filters.signalTypes.length > 0 && !filters.signalTypes.includes(s.signal)) return false;
-      if (filters.statuses.length > 0 && !filters.statuses.includes(s.status)) return false;
-    }
-    
-    return true;
-  });
+  // Keine Frontend-Filterung mehr nötig, da die Datenbank bereits gefiltert hat
+  const filtered = signals ?? [];
 
   // Benachrichtige Parent über Anzahl der Signale
   React.useEffect(() => {
@@ -379,13 +387,20 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
               onUpdate={() => refetch()}
             />
           ))}
-
-          {filtered.length > 10 && (
+          {!showAll && filtered.length > 10 && (
             <button
-              onClick={() => setShowAll(!showAll)}
-              className="text-xs font-mono text-cyan-400/70 hover:text-cyan-400 text-center py-2 transition-colors"
+              onClick={() => setShowAll(true)}
+              className="mt-2 py-2 px-3 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 border border-cyan-400/30 hover:border-cyan-400/60 rounded transition-colors"
             >
-              {showAll ? "▲ Weniger anzeigen" : `▼ Alle ${filtered.length} Signale anzeigen`}
+              ▼ Alle {filtered.length} Signale anzeigen
+            </button>
+          )}
+          {showAll && filtered.length > 10 && (
+            <button
+              onClick={() => setShowAll(false)}
+              className="mt-2 py-2 px-3 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 border border-cyan-400/30 hover:border-cyan-400/60 rounded transition-colors"
+            >
+              ▲ Ausblenden
             </button>
           )}
         </div>

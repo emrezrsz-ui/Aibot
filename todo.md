@@ -309,3 +309,42 @@
 - [ ] Git: Alle Änderungen committen
 - [ ] Git: Push zu user_github/main
 - [ ] Checkpoint: Phase 6 Filterfunktion speichern
+
+
+## Phase 7: Performance-Optimierung — Datenbank-Level Filtering
+
+### 1. Backend: Drizzle Query Optimierung
+- [ ] server/db.ts: getSignalsByFilter erweitern mit WHERE-Clauses
+- [ ] Drizzle: .where() für symbol, interval, signal, status
+- [ ] Drizzle: .limit() und .offset() für Pagination
+- [ ] Drizzle: .orderBy() für sortierte Ergebnisse
+- [ ] Datenbank-Indizes für häufig gefilterte Spalten prüfen
+
+### 2. Backend: tRPC Query Optimierung
+- [ ] server/routers.ts: signals.filtered Query erweitern
+- [ ] Filter-Parameter an getSignalsByFilter weitergeben
+- [ ] Response-Größe reduzieren (nur benötigte Spalten)
+- [ ] Pagination-Support hinzufügen (limit, offset)
+
+### 3. Frontend: Query-Optimierung
+- [ ] client/src/pages/Signals.tsx: trpc.signals.filtered statt trpc.signals.list
+- [ ] Filter-Parameter an tRPC Query übergeben
+- [ ] Pagination implementieren (Load More / Infinite Scroll)
+- [ ] Query-Caching mit React Query optimieren
+
+### 4. Frontend: ScannerSignals Komponente
+- [ ] ScannerSignals: Nur gefilterte Daten vom Backend laden
+- [ ] Entfernen: Frontend-seitige Filterung
+- [ ] Loading-State für Datenbank-Abfrage
+- [ ] Error-Handling für Datenbank-Fehler
+
+### 5. Performance-Tests
+- [ ] Vitest: getSignalsByFilter mit verschiedenen Filtern testen
+- [ ] Vitest: Query-Performance mit 1000+ Signalen testen
+- [ ] Benchmark: Frontend-Filterung vs. Datenbank-Filterung
+- [ ] Load-Test: Mehrere gleichzeitige Benutzer mit Filtern
+
+### 6. GitHub & Checkpoint
+- [ ] Git: Alle Änderungen committen
+- [ ] Git: Push zu user_github/main
+- [ ] Checkpoint: Phase 7 Performance-Optimierung speichern

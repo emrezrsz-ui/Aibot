@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, and, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertScanSignal, ScanSignal, scanSignals, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -140,7 +140,7 @@ export async function insertScanSignal(signal: InsertScanSignal): Promise<number
   }
 }
 
-/** Gefilterte Scanner-Signale laden mit optionalen Filtern */
+/** Gefilterte Scanner-Signale laden mit optionalen Filtern (Datenbank-Level) */
 export async function getSignalsByFilter(
   filters: {
     symbols?: string[];
@@ -153,28 +153,32 @@ export async function getSignalsByFilter(
   const db = await getDb();
   if (!db) return [];
   try {
-    const allSignals = await db
+    // Baue WHERE-Clauses basierend auf Filtern
+    const whereConditions: Array<ReturnType<typeof eq>> = [];
+
+    if (filters.symbols && filters.symbols.length > 0) {
+      whereConditions.push(inArray(scanSignals.symbol, filters.symbols));
+    }
+    if (filters.intervals && filters.intervals.length > 0) {
+      whereConditions.push(inArray(scanSignals.interval, filters.intervals));
+    }
+    if (filters.signalTypes && filters.signalTypes.length > 0) {
+      whereConditions.push(inArray(scanSignals.signal, filters.signalTypes));
+    }
+    if (filters.statuses && filters.statuses.length > 0) {
+      whereConditions.push(inArray(scanSignals.status, filters.statuses as ("EXECUTED" | "IGNORED" | "PENDING")[]));
+    }
+
+    // Kombiniere alle WHERE-Clauses mit AND
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    // Führe Datenbank-Query mit Filtern aus
+    return await db
       .select()
       .from(scanSignals)
+      .where(whereClause)
       .orderBy(desc(scanSignals.scannedAt))
       .limit(limit);
-
-    // Frontend-seitiges Filtern basierend auf den übergebenen Filtern
-    return allSignals.filter((signal) => {
-      if (filters.symbols && filters.symbols.length > 0) {
-        if (!filters.symbols.includes(signal.symbol)) return false;
-      }
-      if (filters.intervals && filters.intervals.length > 0) {
-        if (!filters.intervals.includes(signal.interval)) return false;
-      }
-      if (filters.signalTypes && filters.signalTypes.length > 0) {
-        if (!filters.signalTypes.includes(signal.signal)) return false;
-      }
-      if (filters.statuses && filters.statuses.length > 0) {
-        if (!filters.statuses.includes(signal.status)) return false;
-      }
-      return true;
-    });
   } catch (error) {
     console.error("[Database] getSignalsByFilter:", error);
     return [];
