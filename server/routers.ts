@@ -32,12 +32,14 @@ export const appRouter = router({
           intervals: z.array(z.string()).optional(),
           signalTypes: z.array(z.string()).optional(),
           statuses: z.array(z.string()).optional(),
-          limit: z.number().min(1).max(200).default(100),
+          limit: z.number().min(1).max(200).default(50),
+          page: z.number().min(1).default(1),
         }).optional()
       )
       .query(async ({ input }) => {
-        const limit = input?.limit ?? 100;
-        return await getSignalsByFilter(input || {}, limit);
+        const limit = input?.limit ?? 50;
+        const page = input?.page ?? 1;
+        return await getSignalsByFilter(input || {}, limit, page);
       }),
 
     updateStatus: publicProcedure

@@ -1,9 +1,9 @@
 /**
- * ScannerSignals — Manuelle Signal-Verwaltung
- * ============================================
- * Zeigt die letzten Scanner-Signale aus der DB.
+ * ScannerSignals — Manuelle Signal-Verwaltung mit Pagination
+ * ===========================================================
+ * Zeigt die letzten Scanner-Signale aus der DB mit Pagination.
  * Jedes Signal kann als "Ausgeführt" oder "Ignoriert" markiert werden.
- * OPTIMIERT: Filterung auf Datenbank-Level statt Frontend-Level
+ * OPTIMIERT: Filterung + Pagination auf Datenbank-Level
  */
 
 import { useState } from "react";
@@ -11,6 +11,7 @@ import * as React from "react";
 import { trpc } from "@/lib/trpc";
 import { CheckCircle, XCircle, Clock, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Target, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/PaginationControls";
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
@@ -30,9 +31,8 @@ interface ScanSignal {
   note: string | null;
   scannedAt: Date;
   actionAt: Date | null;
-  closeReason?: "TP" | "SL" | null; // Auto-Close Grund
-  closePrice?: number | null; // Preis beim Close
-  // Phase 2: Divergenz und Confluence
+  closeReason?: "TP" | "SL" | null;
+  closePrice?: number | null;
   hasDivergence?: boolean;
   divergenceType?: "bullish" | "bearish" | null;
   divergenceStrength?: number;
@@ -163,7 +163,6 @@ function SignalRow({ signal, onUpdate }: { signal: ScanSignal; onUpdate: () => v
           >
             {signal.signal}
           </span>
-          {/* Phase 2: Divergenz Badge */}
           {signal.hasDivergence && (
             <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${
               signal.divergenceType === "bullish"
@@ -173,13 +172,11 @@ function SignalRow({ signal, onUpdate }: { signal: ScanSignal; onUpdate: () => v
               💎 {signal.divergenceType?.toUpperCase()}
             </span>
           )}
-          {/* Phase 2: Confluence Badge */}
           {signal.confluenceCount && signal.confluenceCount >= 2 && (
             <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300 border border-purple-400/50">
               🔗 {signal.confluenceCount}TF
             </span>
           )}
-          {/* Stärke-Balken */}
           <div className="flex items-center gap-1">
             <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
               <div
@@ -210,14 +207,12 @@ function SignalRow({ signal, onUpdate }: { signal: ScanSignal; onUpdate: () => v
         <span>EMA12: <span className="text-gray-300">{parseFloat(signal.ema12).toFixed(4)}</span></span>
       </div>
 
-      {/* Notiz (falls vorhanden) */}
       {signal.note && (
         <div className="mt-1.5 text-xs font-mono text-gray-400 italic">
           Notiz: {signal.note}
         </div>
       )}
 
-      {/* Aktions-Buttons (nur wenn PENDING) */}
       {!isActioned && (
         <div className="mt-2.5 flex flex-col gap-2">
           <div className="flex items-center gap-2">
@@ -284,9 +279,10 @@ interface ScannerSignalsProps {
 
 export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps = {}) {
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "EXECUTED" | "IGNORED">("ALL");
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
-  // Baue Filter-Objekt für Datenbank-Query (OPTIMIERT)
+  // Baue Filter-Objekt für Datenbank-Query
   const dbFilters = React.useMemo(() => {
     const filterObj: any = {};
     
@@ -294,7 +290,6 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
     if (filters?.intervals.length) filterObj.intervals = filters.intervals;
     if (filters?.signalTypes.length) filterObj.signalTypes = filters.signalTypes;
     
-    // Status-Filter: wenn "ALL" nicht ausgewählt, füge Status-Filter hinzu
     if (filter !== "ALL") {
       filterObj.statuses = [filter];
     } else if (filters?.statuses.length) {
@@ -304,24 +299,33 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
     return Object.keys(filterObj).length > 0 ? filterObj : undefined;
   }, [filters, filter]);
 
-  // Nutze signals.filtered Query statt signals.list für Datenbank-Filterung
-  const { data: signals, isLoading, refetch } = trpc.signals.filtered.useQuery(
-    dbFilters ? { ...dbFilters, limit: 100 } : { limit: 100 },
-    { refetchInterval: 30_000 } // alle 30s automatisch aktualisieren
+  // Nutze signals.filtered Query mit Pagination
+  const { data: result, isLoading, refetch } = trpc.signals.filtered.useQuery(
+    dbFilters ? { ...dbFilters, limit: pageSize, page } : { limit: pageSize, page },
+    { refetchInterval: 30_000 }
   );
 
-  // Keine Frontend-Filterung mehr nötig, da die Datenbank bereits gefiltert hat
-  const filtered = signals ?? [];
+  const signals = result?.signals ?? [];
+  const total = result?.total ?? 0;
+  const totalPages = result?.totalPages ?? 0;
 
   // Benachrichtige Parent über Anzahl der Signale
   React.useEffect(() => {
     if (onSignalsUpdate) {
-      onSignalsUpdate(signals?.length ?? 0, filtered.length);
+      onSignalsUpdate(total, signals.length);
     }
-  }, [signals, filtered, onSignalsUpdate]);
+  }, [total, signals.length, onSignalsUpdate]);
 
-  const displayed = showAll ? filtered : filtered.slice(0, 10);
-  const pendingCount = (signals ?? []).filter((s) => s.status === "PENDING").length;
+  const pendingCount = signals.filter((s) => s.status === "PENDING").length;
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setPage(1); // Zurück zur ersten Seite bei Seitengröße-Änderung
+  };
 
   return (
     <div className="p-4 bg-gray-900/50 border border-cyan-400/20 rounded-lg">
@@ -350,7 +354,10 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
         {(["ALL", "PENDING", "EXECUTED", "IGNORED"] as const).map((f) => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => {
+              setFilter(f);
+              setPage(1); // Zurück zur ersten Seite bei Filter-Änderung
+            }}
             className={`px-3 py-1 rounded text-xs font-mono font-bold flex-shrink-0 transition-colors ${
               filter === f
                 ? "bg-cyan-500 text-black"
@@ -360,7 +367,7 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
             {f === "ALL" ? "Alle" : f === "PENDING" ? "Ausstehend" : f === "EXECUTED" ? "Ausgeführt" : "Ignoriert"}
             {f !== "ALL" && (
               <span className="ml-1 opacity-70">
-                ({(signals ?? []).filter((s) => s.status === f).length})
+                ({signals.filter((s) => s.status === f).length})
               </span>
             )}
           </button>
@@ -368,11 +375,11 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
       </div>
 
       {/* Signale */}
-      {isLoading ? (
+      {isLoading && signals.length === 0 ? (
         <div className="flex items-center justify-center py-8">
           <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : signals.length === 0 ? (
         <div className="text-center py-8 text-gray-500 font-mono text-sm">
           {filter === "ALL"
             ? "Noch keine Signale — Scanner wartet auf Kerzen-Close via WebSocket"
@@ -380,30 +387,27 @@ export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {displayed.map((signal) => (
+          {signals.map((signal) => (
             <SignalRow
               key={signal.id}
               signal={signal as ScanSignal}
               onUpdate={() => refetch()}
             />
           ))}
-          {!showAll && filtered.length > 10 && (
-            <button
-              onClick={() => setShowAll(true)}
-              className="mt-2 py-2 px-3 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 border border-cyan-400/30 hover:border-cyan-400/60 rounded transition-colors"
-            >
-              ▼ Alle {filtered.length} Signale anzeigen
-            </button>
-          )}
-          {showAll && filtered.length > 10 && (
-            <button
-              onClick={() => setShowAll(false)}
-              className="mt-2 py-2 px-3 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300 border border-cyan-400/30 hover:border-cyan-400/60 rounded transition-colors"
-            >
-              ▲ Ausblenden
-            </button>
-          )}
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {total > 0 && (
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+          isLoading={isLoading}
+        />
       )}
     </div>
   );

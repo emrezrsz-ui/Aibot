@@ -348,3 +348,53 @@
 - [ ] Git: Alle Änderungen committen
 - [ ] Git: Push zu user_github/main
 - [ ] Checkpoint: Phase 7 Performance-Optimierung speichern
+
+
+## Phase 8: Pagination für große Datenmengen (ABGESCHLOSSEN)
+
+### 1. Backend: Drizzle Query mit Pagination
+- [x] server/db.ts: getSignalsByFilter erweitern mit offset/limit
+- [x] Pagination-Parameter: page, pageSize (default 50)
+- [x] Berechne offset = (page - 1) * pageSize
+- [x] Rückgabe: { signals, total, page, pageSize, totalPages }
+- [x] Vitest: Pagination-Tests für verschiedene Seiten
+
+### 2. Backend: tRPC Query mit Pagination
+- [x] server/routers.ts: signals.filtered Query erweitern
+- [x] Pagination-Input: page, pageSize
+- [x] Response-Type: { data: ScanSignal[], pagination: { total, page, pageSize, totalPages } }
+- [x] Vitest: tRPC Pagination Query Tests
+
+### 3. Frontend: Pagination UI Komponenten
+- [x] client/src/components/PaginationControls.tsx: Neue Komponente
+- [x] Buttons: Previous, Next, First, Last
+- [x] Seiten-Anzeige: "Seite 1 von 10"
+- [x] Seitengröße-Selector: 25, 50, 100, 200 Signale pro Seite
+- [x] Disabled-State für erste/letzte Seite
+- [x] Responsive Design für Mobile
+
+### 4. Frontend: ScannerSignals Integration
+- [x] ScannerSignals: Pagination-State (page, pageSize)
+- [x] Nutze trpc.signals.filtered mit page/pageSize
+- [x] Zeige Pagination-Controls unten in der Liste
+- [x] "Lade mehr" Button als Alternative zu Pagination
+- [x] Loading-State während Seite lädt
+
+### 5. Frontend: Infinite Scroll (Optional)
+- [ ] client/src/hooks/useInfiniteScroll.ts: Hook für Infinite Scroll
+- [ ] Automatisches Laden nächster Seite beim Scrollen
+- [ ] Loading-Indicator beim Laden
+- [ ] "Keine weiteren Signale" Nachricht
+
+### 6. Performance & Tests
+- [x] Vitest: Pagination-Tests (erste, mittlere, letzte Seite) - 21 neue Tests
+- [x] Vitest: Seitengröße-Wechsel Tests
+- [x] Vitest: Kombinierte Filter + Pagination Tests
+- [x] Benchmark: Ladezeit mit/ohne Pagination
+- [x] Load-Test: 10.000+ Signale mit Pagination
+- [x] 167/167 Tests bestanden
+
+### 7. GitHub & Checkpoint
+- [x] Git: Alle Änderungen committen
+- [x] Git: Push zu user_github/main
+- [x] Checkpoint: Phase 8 Pagination speichern

@@ -140,7 +140,15 @@ export async function insertScanSignal(signal: InsertScanSignal): Promise<number
   }
 }
 
-/** Gefilterte Scanner-Signale laden mit optionalen Filtern (Datenbank-Level) */
+interface PaginationResult {
+  signals: ScanSignal[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/** Gefilterte Scanner-Signale laden mit optionalen Filtern und Pagination (Datenbank-Level) */
 export async function getSignalsByFilter(
   filters: {
     symbols?: string[];
@@ -148,10 +156,11 @@ export async function getSignalsByFilter(
     signalTypes?: string[];
     statuses?: string[];
   },
-  limit = 100
-): Promise<ScanSignal[]> {
+  limit = 100,
+  page = 1
+): Promise<PaginationResult> {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return { signals: [], total: 0, page, pageSize: limit, totalPages: 0 };
   try {
     // Baue WHERE-Clauses basierend auf Filtern
     const whereConditions: Array<ReturnType<typeof eq>> = [];
@@ -172,17 +181,38 @@ export async function getSignalsByFilter(
     // Kombiniere alle WHERE-Clauses mit AND
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-    // Führe Datenbank-Query mit Filtern aus
-    return await db
+    // Zähle Gesamt-Signale für Pagination
+    const countResult = await db
+      .select({ count: desc(scanSignals.id) })
+      .from(scanSignals)
+      .where(whereClause);
+    
+    const total = countResult.length > 0 ? countResult.length : 0;
+    const totalPages = Math.ceil(total / limit);
+    const offset = (page - 1) * limit;
+
+    // Führe Datenbank-Query mit Filtern und Pagination aus
+    const signals = await db
       .select()
       .from(scanSignals)
       .where(whereClause)
       .orderBy(desc(scanSignals.scannedAt))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      signals,
+      total,
+      page,
+      pageSize: limit,
+      totalPages,
+    };
   } catch (error) {
     console.error("[Database] getSignalsByFilter:", error);
-    return [];
+    return { signals: [], total: 0, page, pageSize: limit, totalPages: 0 };
   }
 }
+
+export { PaginationResult };
 
 // TODO: add feature queries here as your schema grows.
