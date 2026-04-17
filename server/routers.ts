@@ -3,7 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getRecentSignals, updateSignalStatus } from "./db";
+import { getRecentSignals, updateSignalStatus, getSignalsByFilter } from "./db";
 import { encryptApiKey } from "./encryption";
 import { generateWebhookUrl } from "./webhook";
 
@@ -23,6 +23,21 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().min(1).max(200).default(50) }).optional())
       .query(async ({ input }) => {
         return await getRecentSignals(input?.limit ?? 50);
+      }),
+
+    filtered: publicProcedure
+      .input(
+        z.object({
+          symbols: z.array(z.string()).optional(),
+          intervals: z.array(z.string()).optional(),
+          signalTypes: z.array(z.string()).optional(),
+          statuses: z.array(z.string()).optional(),
+          limit: z.number().min(1).max(200).default(100),
+        }).optional()
+      )
+      .query(async ({ input }) => {
+        const limit = input?.limit ?? 100;
+        return await getSignalsByFilter(input || {}, limit);
       }),
 
     updateStatus: publicProcedure

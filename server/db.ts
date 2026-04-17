@@ -140,4 +140,45 @@ export async function insertScanSignal(signal: InsertScanSignal): Promise<number
   }
 }
 
+/** Gefilterte Scanner-Signale laden mit optionalen Filtern */
+export async function getSignalsByFilter(
+  filters: {
+    symbols?: string[];
+    intervals?: string[];
+    signalTypes?: string[];
+    statuses?: string[];
+  },
+  limit = 100
+): Promise<ScanSignal[]> {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    const allSignals = await db
+      .select()
+      .from(scanSignals)
+      .orderBy(desc(scanSignals.scannedAt))
+      .limit(limit);
+
+    // Frontend-seitiges Filtern basierend auf den übergebenen Filtern
+    return allSignals.filter((signal) => {
+      if (filters.symbols && filters.symbols.length > 0) {
+        if (!filters.symbols.includes(signal.symbol)) return false;
+      }
+      if (filters.intervals && filters.intervals.length > 0) {
+        if (!filters.intervals.includes(signal.interval)) return false;
+      }
+      if (filters.signalTypes && filters.signalTypes.length > 0) {
+        if (!filters.signalTypes.includes(signal.signal)) return false;
+      }
+      if (filters.statuses && filters.statuses.length > 0) {
+        if (!filters.statuses.includes(signal.status)) return false;
+      }
+      return true;
+    });
+  } catch (error) {
+    console.error("[Database] getSignalsByFilter:", error);
+    return [];
+  }
+}
+
 // TODO: add feature queries here as your schema grows.

@@ -6,6 +6,7 @@
  */
 
 import { useState } from "react";
+import * as React from "react";
 import { trpc } from "@/lib/trpc";
 import { CheckCircle, XCircle, Clock, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Target, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -270,7 +271,17 @@ function SignalRow({ signal, onUpdate }: { signal: ScanSignal; onUpdate: () => v
 
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 
-export function ScannerSignals() {
+interface ScannerSignalsProps {
+  filters?: {
+    symbols: string[];
+    intervals: string[];
+    signalTypes: string[];
+    statuses: string[];
+  };
+  onSignalsUpdate?: (total: number, filtered: number) => void;
+}
+
+export function ScannerSignals({ filters, onSignalsUpdate }: ScannerSignalsProps = {}) {
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "EXECUTED" | "IGNORED">("ALL");
   const [showAll, setShowAll] = useState(false);
 
@@ -280,9 +291,26 @@ export function ScannerSignals() {
   );
 
   const filtered = (signals ?? []).filter((s) => {
-    if (filter === "ALL") return true;
-    return s.status === filter;
+    // Status-Filter
+    if (filter !== "ALL" && s.status !== filter) return false;
+    
+    // Zusätzliche Filter aus Props
+    if (filters) {
+      if (filters.symbols.length > 0 && !filters.symbols.includes(s.symbol)) return false;
+      if (filters.intervals.length > 0 && !filters.intervals.includes(s.interval)) return false;
+      if (filters.signalTypes.length > 0 && !filters.signalTypes.includes(s.signal)) return false;
+      if (filters.statuses.length > 0 && !filters.statuses.includes(s.status)) return false;
+    }
+    
+    return true;
   });
+
+  // Benachrichtige Parent über Anzahl der Signale
+  React.useEffect(() => {
+    if (onSignalsUpdate) {
+      onSignalsUpdate(signals?.length ?? 0, filtered.length);
+    }
+  }, [signals, filtered, onSignalsUpdate]);
 
   const displayed = showAll ? filtered : filtered.slice(0, 10);
   const pendingCount = (signals ?? []).filter((s) => s.status === "PENDING").length;

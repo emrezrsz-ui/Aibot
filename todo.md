@@ -244,3 +244,68 @@
 - [x] Exponential Backoff für Reconnect-Versuche implementieren
 - [x] Connection-Pool limitieren (max 5 Reconnects pro Minute)
 - [x] GitHub Push nach Fix
+
+## Phase 6: Signal-Filterfunktion im Trading-Hub
+
+### 1. Frontend: Filter-UI Komponenten
+- [ ] client/src/components/SignalFilterPanel.tsx: Filter-Panel mit Checkboxes/Dropdowns
+- [ ] Filter nach Kryptowährung (BTC, ETH, SOL, XRP)
+- [ ] Filter nach Zeitrahmen (1m, 5m, 15m, 1h, 4h)
+- [ ] Filter nach Signal-Typ (BUY, SELL, NEUTRAL)
+- [ ] Filter nach Status (PENDING, EXECUTED, IGNORED)
+- [ ] "Reset Filters" Button
+- [ ] Aktive Filter als Badges anzeigen
+
+### 2. Frontend: Integration in Trading-Hub
+- [ ] TradingHub.tsx: SignalFilterPanel oben hinzufügen
+- [ ] State für aktive Filter (selectedSymbols, selectedIntervals, etc.)
+- [ ] Gefilterte Signale in der Liste anzeigen
+- [ ] Anzahl gefilterte Signale anzeigen
+
+### 3. Backend: Filter-Query in tRPC
+- [ ] server/routers.ts: getSignals Query erweitern (Filter-Parameter)
+- [ ] server/db.ts: getSignalsByFilter Helper-Funktion
+- [ ] Drizzle Query mit WHERE-Clauses für Symbol, Interval, Signal, Status
+
+### 4. Tests
+- [ ] Vitest: Filter-Logik testen (einzelne und kombinierte Filter)
+- [ ] Vitest: getSignalsByFilter Query testen
+- [ ] Integration Tests: Frontend-Filter → Backend-Query
+
+### 5. GitHub & Checkpoint
+- [ ] Git: Alle Änderungen committen
+- [ ] Git: Push zu user_github/main
+- [ ] Checkpoint: Phase 6 Filterfunktion speichern
+
+## Phase 6: Signal-Filterfunktion im Trading-Hub
+
+### 1. Frontend: Filter-UI Komponenten
+- [x] client/src/components/SignalFilterPanel.tsx: Filter-Panel mit Checkboxes/Dropdowns
+- [x] Filter nach Kryptowährung (BTC, ETH, SOL, XRP)
+- [x] Filter nach Zeitrahmen (1m, 5m, 15m, 1h, 4h)
+- [x] Filter nach Signal-Typ (BUY, SELL, NEUTRAL)
+- [x] Filter nach Status (PENDING, EXECUTED, IGNORED)
+- [x] "Reset Filters" Button
+- [x] Aktive Filter als Badges anzeigen
+
+### 2. Frontend: Integration in Signals-Seite
+- [x] Signals.tsx: SignalFilterPanel integriert
+- [x] State für aktive Filter (selectedSymbols, selectedIntervals, etc.)
+- [x] Gefilterte Signale in der Liste anzeigen
+- [x] Anzahl gefilterte Signale anzeigen
+
+### 3. Backend: Filter-Query in tRPC
+- [x] server/routers.ts: signals.filtered Query hinzugefügt (Filter-Parameter)
+- [x] server/db.ts: getSignalsByFilter Helper-Funktion
+- [x] Drizzle Query mit WHERE-Clauses für Symbol, Interval, Signal, Status
+
+### 4. Tests
+- [x] Vitest: Filter-Logik testen (einzelne und kombinierte Filter) - 10 Tests
+- [x] Vitest: getSignalsByFilter Query testen
+- [x] Integration Tests: Frontend-Filter → Backend-Query
+- [x] 131/132 Tests bestanden
+
+### 5. GitHub & Checkpoint
+- [ ] Git: Alle Änderungen committen
+- [ ] Git: Push zu user_github/main
+- [ ] Checkpoint: Phase 6 Filterfunktion speichern

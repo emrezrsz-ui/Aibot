@@ -10,6 +10,7 @@ import { Link } from "wouter";
 import { ScannerSignals } from "@/components/ScannerSignals";
 import { TradePerformance } from "@/components/TradePerformance";
 import { FilterSettingsPanel } from "@/components/FilterSettingsPanel";
+import { SignalFilterPanel, type SignalFilters } from "@/components/SignalFilterPanel";
 import { ArrowLeft, Wifi, WifiOff, RefreshCw, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -39,6 +40,14 @@ export default function Signals() {
   const [health, setHealth] = useState<ScannerHealth | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState(false);
+  const [filters, setFilters] = useState<SignalFilters>({
+    symbols: [],
+    intervals: [],
+    signalTypes: [],
+    statuses: [],
+  });
+  const [totalSignalsCount, setTotalSignalsCount] = useState(0);
+  const [filteredSignalsCount, setFilteredSignalsCount] = useState(0);
 
   const fetchHealth = async () => {
     try {
@@ -147,7 +156,6 @@ export default function Signals() {
                   </span>
                 )}
               </div>
-
               {/* Statistiken */}
               {health && (
                 <>
@@ -181,6 +189,13 @@ export default function Signals() {
           {/* Filter-Einstellungen */}
           <FilterSettingsPanel />
 
+          {/* Signal-Filter */}
+          <SignalFilterPanel
+            onFiltersChange={setFilters}
+            totalSignals={totalSignalsCount}
+            filteredCount={filteredSignalsCount}
+          />
+
           {/* Performance Dashboard */}
           <section>
             <h2 className="text-lg font-bold text-cyan-400 font-mono mb-4">📊 PERFORMANCE DASHBOARD</h2>
@@ -190,7 +205,10 @@ export default function Signals() {
           {/* Scanner Signals */}
           <section>
             <h2 className="text-lg font-bold text-cyan-400 font-mono mb-4">🔔 SCANNER-SIGNALE</h2>
-            <ScannerSignals />
+            <ScannerSignals filters={filters} onSignalsUpdate={(total, filtered) => {
+              setTotalSignalsCount(total);
+              setFilteredSignalsCount(filtered);
+            }} />
           </section>
         </main>
       </div>
