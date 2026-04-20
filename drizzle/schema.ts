@@ -1,4 +1,4 @@
-import { boolean, decimal, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, decimal, integer, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 /**
  * Core user table backing auth flow.
@@ -16,9 +16,9 @@ export const users = pgTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: pgEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: varchar("role", { length: 20 }).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -49,7 +49,7 @@ export const scanSignals = pgTable("scan_signals", {
   confluenceCount: integer("confluenceCount").default(1).notNull(), // 1–3 Timeframes
   confluenceTimeframes: varchar("confluenceTimeframes", { length: 50 }), // "5m,15m,1h"
   confluenceBonus: integer("confluenceBonus").default(0).notNull(), // +15 oder +25
-  status: pgEnum("status", ["PENDING", "EXECUTED", "IGNORED"]).default("PENDING").notNull(),
+  status: varchar("status", { length: 20 }).default("PENDING").notNull(), // PENDING | EXECUTED | IGNORED
   note: text("note"), // Optionale Notiz des Benutzers
   scannedAt: timestamp("scannedAt").defaultNow().notNull(),
   actionAt: timestamp("actionAt"), // Wann EXECUTED/IGNORED gesetzt wurde
@@ -68,7 +68,7 @@ export const filterConfigs = pgTable("filter_configs", {
   mtfTrendFilterEnabled: boolean("mtfTrendFilterEnabled").default(false).notNull(),
   volumeConfirmationEnabled: boolean("volumeConfirmationEnabled").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type FilterConfig = typeof filterConfigs.$inferSelect;
@@ -86,11 +86,11 @@ export const userConnections = pgTable("user_connections", {
   apiKey: text("apiKey").notNull(), // Verschlüsselt
   apiSecret: text("apiSecret").notNull(), // Verschlüsselt
   webhookUrl: text("webhookUrl"), // Für MetaTrader Webhooks
-  status: pgEnum("status", ["ACTIVE", "INACTIVE", "ERROR"]).default("INACTIVE").notNull(),
+  status: varchar("status", { length: 20 }).default("INACTIVE").notNull(), // ACTIVE | INACTIVE | ERROR
   lastTestedAt: timestamp("lastTestedAt"),
   errorMessage: text("errorMessage"), // Fehler-Details wenn status = ERROR
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type UserConnection = typeof userConnections.$inferSelect;
@@ -103,13 +103,13 @@ export type InsertUserConnection = typeof userConnections.$inferInsert;
 export const tradingConfigs = pgTable("trading_configs", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  botStatus: pgEnum("botStatus", ["ON", "OFF"]).default("OFF").notNull(),
+  botStatus: varchar("botStatus", { length: 20 }).default("OFF").notNull(), // ON | OFF
   demoMode: boolean("demoMode").default(true).notNull(), // true = Demo, false = Real Money
   slippageTolerance: decimal("slippageTolerance", { precision: 5, scale: 2 }).default("0.5").notNull(), // %
   maxTradeSize: decimal("maxTradeSize", { precision: 15, scale: 2 }).default("1000").notNull(), // USDT
   demoBalance: decimal("demoBalance", { precision: 15, scale: 2 }).default("10000").notNull(), // Fiktives Kapital
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type TradingConfig = typeof tradingConfigs.$inferSelect;
@@ -124,16 +124,16 @@ export const trades = pgTable("trades", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   symbol: varchar("symbol", { length: 20 }).notNull(),
-  type: pgEnum("type", ["BUY", "SELL"]).notNull(),
+  type: varchar("type", { length: 20 }).notNull(), // BUY | SELL
   entryPrice: decimal("entryPrice", { precision: 20, scale: 8 }).notNull(),
   quantity: decimal("quantity", { precision: 20, scale: 8 }).notNull(),
   takeProfit: decimal("takeProfit", { precision: 20, scale: 8 }).notNull(),
   stopLoss: decimal("stopLoss", { precision: 20, scale: 8 }).notNull(),
   closePrice: decimal("closePrice", { precision: 20, scale: 8 }),
-  status: pgEnum("status", ["OPEN", "CLOSED", "CANCELLED"]).default("OPEN").notNull(),
+  status: varchar("status", { length: 20 }).default("OPEN").notNull(), // OPEN | CLOSED | CANCELLED
   // Trailing Stop
   trailingStopLevel: decimal("trailingStopLevel", { precision: 20, scale: 8 }),
-  trailingStopStatus: pgEnum("trailingStopStatus", ["NONE", "BREAK_EVEN", "SECURED"]).default("NONE").notNull(),
+  trailingStopStatus: varchar("trailingStopStatus", { length: 20 }).default("NONE").notNull(), // NONE | BREAK_EVEN | SECURED
   // Metadata
   demoMode: boolean("demoMode").default(true).notNull(),
   signalStrength: integer("signalStrength").default(0).notNull(),
@@ -141,7 +141,7 @@ export const trades = pgTable("trades", {
   profitLossPercent: decimal("profitLossPercent", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   closedAt: timestamp("closedAt"),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Trade = typeof trades.$inferSelect;
