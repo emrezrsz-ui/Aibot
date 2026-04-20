@@ -36,5 +36,5 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Start-Befehl: Führe Migrations aus, dann starte Server
-CMD ["sh", "-c", "npm run db:push && NODE_ENV=production node dist/index.js --port=${PORT:-3000}"]
+# Start-Befehl: Starte Server direkt (Migrations optional manuell)
+CMD ["sh", "-c", "NODE_ENV=production node dist/index.js --port=${PORT:-3000}"]
