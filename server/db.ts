@@ -1,5 +1,5 @@
 import { desc, eq, and, inArray } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { InsertUser, InsertScanSignal, ScanSignal, scanSignals, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
