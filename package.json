@@ -8,7 +8,7 @@
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js",
     "start": "NODE_ENV=production node dist/index.js --port=${PORT:-3000}",
     "check": "tsc --noEmit",
-    "build:clean": "rm -rf dist && pnpm build",
+    "build:clean": "rm -rf dist && npm run build",
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",

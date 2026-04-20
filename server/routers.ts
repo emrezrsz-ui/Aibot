@@ -3,7 +3,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getRecentSignals, updateSignalStatus, getSignalsByFilter } from "./db";
+import { getRecentSignals, updateSignalStatus, getSignalsByFilter, saveTrade, updateTrade, getUserTrades, getActiveTrades, getTradeById } from "./db";
 import { encryptApiKey } from "./encryption";
 import { generateWebhookUrl } from "./webhook";
 
@@ -120,8 +120,71 @@ export const appRouter = router({
           maxTradeSize: 5000,
           webhookUrl: webhookConfig.webhookUrl,
         };
+       }),
+  }),
+
+  trades: router({
+    save: publicProcedure
+      .input(
+        z.object({
+          symbol: z.string(),
+          type: z.enum(["BUY", "SELL"]),
+          entryPrice: z.number(),
+          quantity: z.number(),
+          takeProfit: z.number(),
+          stopLoss: z.number(),
+          demoMode: z.boolean().default(true),
+          signalStrength: z.number().default(0),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const trade = await saveTrade({
+          userId,
+          ...input,
+          status: "OPEN",
+        });
+        if (!trade) throw new Error("Trade konnte nicht gespeichert werden");
+        return { success: true, trade };
+      }),
+
+    update: publicProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          closePrice: z.number().optional(),
+          status: z.enum(["OPEN", "CLOSED", "CANCELLED"]).optional(),
+          profitLoss: z.number().optional(),
+          profitLossPercent: z.number().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const userId = ctx.user?.id || 1;
+        const trade = await getTradeById(input.id, userId);
+        if (!trade) throw new Error("Trade nicht gefunden");
+        
+        const updated = await updateTrade(input.id, {
+          closePrice: input.closePrice,
+          status: input.status,
+          profitLoss: input.profitLoss,
+          profitLossPercent: input.profitLossPercent,
+          closedAt: input.status === "CLOSED" ? new Date() : undefined,
+        });
+        if (!updated) throw new Error("Trade konnte nicht aktualisiert werden");
+        return { success: true };
+      }),
+
+    list: publicProcedure
+      .query(async ({ ctx }) => {
+        const userId = ctx.user?.id || 1;
+        return await getUserTrades(userId);
+      }),
+
+    active: publicProcedure
+      .query(async ({ ctx }) => {
+        const userId = ctx.user?.id || 1;
+        return await getActiveTrades(userId);
       }),
   }),
 });
-
 export type AppRouter = typeof appRouter;

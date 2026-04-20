@@ -216,3 +216,94 @@ export async function getSignalsByFilter(
 export { PaginationResult };
 
 // TODO: add feature queries here as your schema grows.
+
+// ─── Trades Queries ─────────────────────────────────────────────────────────
+
+// Import trades table
+import { trades } from "../drizzle/schema";
+
+/** Speichere einen neuen Trade */
+export async function saveTrade(trade: any): Promise<any | null> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot save trade: database not available");
+    return null;
+  }
+  try {
+    const result = await db.insert(trades).values(trade);
+    const insertId = (result[0] as { insertId: number }).insertId;
+    if (!insertId) return null;
+    
+    // Lade den neu erstellten Trade
+    const saved = await db.select().from(trades).where(eq(trades.id, insertId)).limit(1);
+    return saved.length > 0 ? saved[0] : null;
+  } catch (error) {
+    console.error("[Database] saveTrade:", error);
+    return null;
+  }
+}
+
+/** Aktualisiere einen bestehenden Trade */
+export async function updateTrade(id: number, updates: any): Promise<boolean> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot update trade: database not available");
+    return false;
+  }
+  try {
+    await db.update(trades).set(updates).where(eq(trades.id, id));
+    return true;
+  } catch (error) {
+    console.error("[Database] updateTrade:", error);
+    return false;
+  }
+}
+
+/** Lade alle Trades eines Benutzers */
+export async function getUserTrades(userId: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    return await db
+      .select()
+      .from(trades)
+      .where(eq(trades.userId, userId))
+      .orderBy(desc(trades.createdAt));
+  } catch (error) {
+    console.error("[Database] getUserTrades:", error);
+    return [];
+  }
+}
+
+/** Lade aktive Trades eines Benutzers */
+export async function getActiveTrades(userId: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    return await db
+      .select()
+      .from(trades)
+      .where(and(eq(trades.userId, userId), eq(trades.status, "OPEN")))
+      .orderBy(desc(trades.createdAt));
+  } catch (error) {
+    console.error("[Database] getActiveTrades:", error);
+    return [];
+  }
+}
+
+/** Lade einen Trade nach ID */
+export async function getTradeById(id: number, userId: number): Promise<any | null> {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const result = await db
+      .select()
+      .from(trades)
+      .where(and(eq(trades.id, id), eq(trades.userId, userId)))
+      .limit(1);
+    return result.length > 0 ? result[0] : null;
+  } catch (error) {
+    console.error("[Database] getTradeById:", error);
+    return null;
+  }
+}

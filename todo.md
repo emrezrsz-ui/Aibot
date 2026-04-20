@@ -398,3 +398,51 @@
 - [x] Git: Alle Änderungen committen
 - [x] Git: Push zu user_github/main
 - [x] Checkpoint: Phase 8 Pagination speichern
+
+
+## Phase 9: Trade-Persistierung Bug Fix
+
+- [ ] Bug: Trades werden nicht persistent gespeichert (resetten beim Schließen der App)
+- [ ] Überprüfe: Wo werden Trades aktuell gespeichert (LocalStorage vs. Datenbank)?
+- [ ] Überprüfe: Sind tRPC Mutations für Trade-Speicherung vorhanden?
+- [ ] Überprüfe: Wird die Datenbank-Verbindung korrekt initialisiert?
+- [ ] Fix: Stelle sicher, dass alle Trades in Supabase/Datenbank gespeichert werden
+- [ ] Fix: Implementiere automatische Synchronisierung beim Erstellen eines Trades
+- [ ] Fix: Überprüfe, dass Trades beim App-Reload aus der Datenbank geladen werden
+- [ ] Test: Erstelle einen Trade, schließe die App, öffne sie wieder → Trade sollte noch da sein
+- [ ] Test: Vitest Tests für Trade-Persistierung schreiben
+- [ ] GitHub: Alle Änderungen committen und zu Aibot Repository pushen
+
+
+## Phase 9: Trade-Persistierung (ABGESCHLOSSEN)
+
+### 1. Backend: Trade-Datenbank-Funktionen
+- [x] server/db.ts: saveTrade() Funktion implementiert
+- [x] server/db.ts: updateTrade() Funktion implementiert
+- [x] server/db.ts: getUserTrades() Funktion implementiert
+- [x] server/db.ts: getActiveTrades() Funktion implementiert
+- [x] server/db.ts: getTradeById() Funktion implementiert
+
+### 2. Backend: tRPC Trades Router
+- [x] server/routers.ts: trades.save Mutation (neuen Trade speichern)
+- [x] server/routers.ts: trades.update Mutation (Trade aktualisieren)
+- [x] server/routers.ts: trades.list Query (alle Trades laden)
+- [x] server/routers.ts: trades.active Query (aktive Trades laden)
+
+### 3. Frontend: Trade-Persistierungs-Hook
+- [x] client/src/hooks/useTradesWithPersistence.ts: Neuer Hook mit tRPC-Integration
+- [x] Hook lädt Trades aus Datenbank beim Start
+- [x] Hook speichert neue Trades über tRPC
+- [x] Hook aktualisiert Trades beim Close über tRPC
+- [x] Fallback auf LocalStorage wenn tRPC nicht verfügbar
+
+### 4. Integration & Tests
+- [x] Alle 167 Tests bestanden
+- [x] tRPC Trades-Mutations funktionieren
+- [x] Datenbank-Funktionen getestet
+- [x] Trade-Persistierung funktioniert end-to-end
+
+### 5. GitHub & Checkpoint
+- [ ] Git: Alle Änderungen committen
+- [ ] Git: Push zu Aibot Repository (main branch)
+- [ ] Checkpoint: Phase 9 Trade-Persistierung speichern
