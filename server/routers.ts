@@ -6,6 +6,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { getRecentSignals, updateSignalStatus, getSignalsByFilter, saveTrade, updateTrade, getUserTrades, getActiveTrades, getTradeById } from "./db";
 import { encryptApiKey } from "./encryption";
 import { generateWebhookUrl } from "./webhook";
+import { healthRouter } from "./health-router";
 
 export const appRouter = router({
   system: systemRouter,
@@ -122,6 +123,8 @@ export const appRouter = router({
         };
        }),
   }),
+
+  health: healthRouter,
 
   trades: router({
     save: publicProcedure
