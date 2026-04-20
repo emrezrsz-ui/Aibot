@@ -1,22 +1,22 @@
-import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
  * Columns use camelCase to match both database fields and generated types.
  */
-export const users = mysqlTable("users", {
+export const users = pgTable("users", {
   /**
    * Surrogate primary key. Auto-incremented numeric value managed by the database.
    * Use this for relations between tables.
    */
-  id: int("id").autoincrement().primaryKey(),
+  id: serial("id").primaryKey(),
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: pgEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -31,12 +31,12 @@ export type InsertUser = typeof users.$inferInsert;
  * Scanner-Signale: Vom 24/7-Scanner erfasste Markt-Signale.
  * Können manuell als EXECUTED oder IGNORED markiert werden.
  */
-export const scanSignals = mysqlTable("scan_signals", {
-  id: int("id").autoincrement().primaryKey(),
+export const scanSignals = pgTable("scan_signals", {
+  id: serial("id").primaryKey(),
   symbol: varchar("symbol", { length: 20 }).notNull(),
   interval: varchar("interval", { length: 10 }).notNull(),
   signal: varchar("signal", { length: 10 }).notNull(), // BUY | SELL | NEUTRAL
-  strength: int("strength").notNull().default(0),
+  strength: integer("strength").notNull().default(0),
   currentPrice: text("currentPrice").notNull(),
   rsi: text("rsi").notNull(),
   ema12: text("ema12").notNull(),
@@ -44,12 +44,12 @@ export const scanSignals = mysqlTable("scan_signals", {
   // Phase 2: RSI-Divergenz-Erkennung
   hasDivergence: boolean("hasDivergence").default(false).notNull(),
   divergenceType: varchar("divergenceType", { length: 20 }), // "bullish" | "bearish" | null
-  divergenceStrength: int("divergenceStrength").default(0).notNull(),
+  divergenceStrength: integer("divergenceStrength").default(0).notNull(),
   // Phase 2: Multi-Timeframe Confluence
-  confluenceCount: int("confluenceCount").default(1).notNull(), // 1–3 Timeframes
+  confluenceCount: integer("confluenceCount").default(1).notNull(), // 1–3 Timeframes
   confluenceTimeframes: varchar("confluenceTimeframes", { length: 50 }), // "5m,15m,1h"
-  confluenceBonus: int("confluenceBonus").default(0).notNull(), // +15 oder +25
-  status: mysqlEnum("status", ["PENDING", "EXECUTED", "IGNORED"]).default("PENDING").notNull(),
+  confluenceBonus: integer("confluenceBonus").default(0).notNull(), // +15 oder +25
+  status: pgEnum("status", ["PENDING", "EXECUTED", "IGNORED"]).default("PENDING").notNull(),
   note: text("note"), // Optionale Notiz des Benutzers
   scannedAt: timestamp("scannedAt").defaultNow().notNull(),
   actionAt: timestamp("actionAt"), // Wann EXECUTED/IGNORED gesetzt wurde
@@ -62,9 +62,9 @@ export type InsertScanSignal = typeof scanSignals.$inferInsert;
  * Filter-Konfiguration: Benutzer-spezifische Filter-Einstellungen.
  * Speichert die Aktivierungsstatus der professionellen Trading-Filter.
  */
-export const filterConfigs = mysqlTable("filter_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+export const filterConfigs = pgTable("filter_configs", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   mtfTrendFilterEnabled: boolean("mtfTrendFilterEnabled").default(false).notNull(),
   volumeConfirmationEnabled: boolean("volumeConfirmationEnabled").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -79,14 +79,14 @@ export type InsertFilterConfig = typeof filterConfigs.$inferInsert;
  * Phase 3: User Connections — Gespeicherte Exchange-Verbindungen (Binance, MetaTrader, etc.)
  * API-Keys werden verschlüsselt gespeichert.
  */
-export const userConnections = mysqlTable("user_connections", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+export const userConnections = pgTable("user_connections", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   exchange: varchar("exchange", { length: 50 }).notNull(), // "binance", "metatrader4", "metatrader5"
   apiKey: text("apiKey").notNull(), // Verschlüsselt
   apiSecret: text("apiSecret").notNull(), // Verschlüsselt
   webhookUrl: text("webhookUrl"), // Für MetaTrader Webhooks
-  status: mysqlEnum("status", ["ACTIVE", "INACTIVE", "ERROR"]).default("INACTIVE").notNull(),
+  status: pgEnum("status", ["ACTIVE", "INACTIVE", "ERROR"]).default("INACTIVE").notNull(),
   lastTestedAt: timestamp("lastTestedAt"),
   errorMessage: text("errorMessage"), // Fehler-Details wenn status = ERROR
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -100,10 +100,10 @@ export type InsertUserConnection = typeof userConnections.$inferInsert;
  * Phase 3: Trading Config — Bot-Einstellungen pro Benutzer
  * Speichert Bot-Status, Trading-Modi und Risk-Management-Parameter.
  */
-export const tradingConfigs = mysqlTable("trading_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  botStatus: mysqlEnum("botStatus", ["ON", "OFF"]).default("OFF").notNull(),
+export const tradingConfigs = pgTable("trading_configs", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  botStatus: pgEnum("botStatus", ["ON", "OFF"]).default("OFF").notNull(),
   demoMode: boolean("demoMode").default(true).notNull(), // true = Demo, false = Real Money
   slippageTolerance: decimal("slippageTolerance", { precision: 5, scale: 2 }).default("0.5").notNull(), // %
   maxTradeSize: decimal("maxTradeSize", { precision: 15, scale: 2 }).default("1000").notNull(), // USDT
@@ -120,23 +120,23 @@ export type InsertTradingConfig = typeof tradingConfigs.$inferInsert;
  * Trades: Ausgeführte Trades (Demo oder Real)
  * Speichert Entry, Exit, TP/SL und Trailing-Stop-Informationen.
  */
-export const trades = mysqlTable("trades", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+export const trades = pgTable("trades", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   symbol: varchar("symbol", { length: 20 }).notNull(),
-  type: mysqlEnum("type", ["BUY", "SELL"]).notNull(),
+  type: pgEnum("type", ["BUY", "SELL"]).notNull(),
   entryPrice: decimal("entryPrice", { precision: 20, scale: 8 }).notNull(),
   quantity: decimal("quantity", { precision: 20, scale: 8 }).notNull(),
   takeProfit: decimal("takeProfit", { precision: 20, scale: 8 }).notNull(),
   stopLoss: decimal("stopLoss", { precision: 20, scale: 8 }).notNull(),
   closePrice: decimal("closePrice", { precision: 20, scale: 8 }),
-  status: mysqlEnum("status", ["OPEN", "CLOSED", "CANCELLED"]).default("OPEN").notNull(),
+  status: pgEnum("status", ["OPEN", "CLOSED", "CANCELLED"]).default("OPEN").notNull(),
   // Trailing Stop
   trailingStopLevel: decimal("trailingStopLevel", { precision: 20, scale: 8 }),
-  trailingStopStatus: mysqlEnum("trailingStopStatus", ["NONE", "BREAK_EVEN", "SECURED"]).default("NONE").notNull(),
+  trailingStopStatus: pgEnum("trailingStopStatus", ["NONE", "BREAK_EVEN", "SECURED"]).default("NONE").notNull(),
   // Metadata
   demoMode: boolean("demoMode").default(true).notNull(),
-  signalStrength: int("signalStrength").default(0).notNull(),
+  signalStrength: integer("signalStrength").default(0).notNull(),
   profitLoss: decimal("profitLoss", { precision: 20, scale: 8 }),
   profitLossPercent: decimal("profitLossPercent", { precision: 5, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
