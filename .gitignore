@@ -120,3 +120,9 @@ scanner-backend/node_modules/
 scanner-backend/.env
 
 
+
+# Local skills directory
+skills/
+
+# Skills manifest (local reference only)
+SKILLS_MANIFEST.md
