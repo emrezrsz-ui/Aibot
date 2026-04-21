@@ -1,3 +1,4 @@
+# Cache-bust: 2026-04-21T06:15:00Z - Force rebuild to pick up db:push fix
 # Multi-stage build für optimierte Größe und Performance
 FROM node:20-slim as builder
 
