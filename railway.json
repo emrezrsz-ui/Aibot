@@ -5,7 +5,7 @@
     "buildCommand": "npm install --legacy-peer-deps && npm run build"
   },
   "deploy": {
-    "startCommand": "npm run db:push && NODE_ENV=production node dist/index.js --port=${PORT:-3000}",
+    "startCommand": "NODE_ENV=production node dist/index.js --port=${PORT:-3000}",
     "restartPolicyMaxRetries": 5,
     "restartPolicyType": "on_failure"
   }
