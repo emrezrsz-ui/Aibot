@@ -12,8 +12,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:migrate-manual": "drizzle-kit generate && drizzle-kit migrate",
-    "postbuild": "echo 'Build complete: dist/index.js ready for production'",
-    "db:push": "echo 'DEPRECATED: Use db:migrate-manual instead. Migrations are no longer auto-run on deploy.'"
+    "postbuild": "echo 'Build complete: dist/index.js ready for production'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
