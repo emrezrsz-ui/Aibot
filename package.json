@@ -11,6 +11,7 @@
     "build:clean": "rm -rf dist && npm run build",
     "format": "prettier --write .",
     "test": "vitest run",
+    "db:push": "drizzle-kit push",
     "db:migrate-manual": "drizzle-kit generate && drizzle-kit migrate",
     "postbuild": "echo 'Build complete: dist/index.js ready for production'"
   },

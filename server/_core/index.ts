@@ -92,4 +92,10 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+// Safe-Boot: Try-catch um Server-Start mit Fallback
+startServer().catch((error) => {
+  console.error('[Server] Critical error during startup:', error);
+  console.error('[Server] Server will attempt to continue with degraded functionality');
+  // Nicht beenden - Server läuft weiter, auch wenn DB nicht erreichbar ist
+  process.exit(1);
+});

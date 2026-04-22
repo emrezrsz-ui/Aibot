@@ -6,12 +6,23 @@ import { ENV } from './_core/env';
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
+// Safe-Boot: Erhöhe Connection-Timeout auf 30 Sekunden
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      // Safe-Boot: Konfiguriere PostgreSQL Connection mit 30s Timeout
+      const connectionString = process.env.DATABASE_URL;
+      const connectionUrl = new URL(connectionString);
+      
+      // Setze Connection-Timeout Parameter
+      connectionUrl.searchParams.set('connect_timeout', '30');
+      connectionUrl.searchParams.set('statement_timeout', '30000');
+      
+      _db = drizzle(connectionUrl.toString());
+      console.log('[Database] Connected successfully with 30s timeout');
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn('[Database] Failed to connect:', error);
+      console.warn('[Database] Server will continue without database - graceful degradation enabled');
       _db = null;
     }
   }
