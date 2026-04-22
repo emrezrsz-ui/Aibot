@@ -39,4 +39,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Start-Befehl: Starte Server direkt (nutze ENV Variable NODE_ENV)
 # Safe-Boot: Keine Migrations beim Start, nur direkter Server-Start
+# Cache-Bust: Force rebuild (2026-04-22T08:15:00Z)
 CMD ["node", "dist/index.js", "--port=3000"]
